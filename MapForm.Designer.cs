@@ -55,7 +55,7 @@ namespace L1FlyMapViewer
         private CheckBox chkShowPassable;
         private CheckBox chkShowGrid;
         private CheckBox chkShowS32Boundary;
-        private CheckBox chkEnableEdit;
+        private Button btnCopySettings;
         private Button btnSetPassable;
         private Button btnSetImpassable;
         private Button btnSaveS32;
@@ -126,7 +126,7 @@ namespace L1FlyMapViewer
             this.chkShowPassable = new CheckBox();
             this.chkShowGrid = new CheckBox();
             this.chkShowS32Boundary = new CheckBox();
-            this.chkEnableEdit = new CheckBox();
+            this.btnCopySettings = new Button();
             this.btnSetPassable = new Button();
             this.btnSetImpassable = new Button();
             this.btnSaveS32 = new Button();
@@ -428,7 +428,7 @@ namespace L1FlyMapViewer
             this.s32LayerControlPanel.Controls.Add(this.chkShowPassable);
             this.s32LayerControlPanel.Controls.Add(this.chkShowGrid);
             this.s32LayerControlPanel.Controls.Add(this.chkShowS32Boundary);
-            this.s32LayerControlPanel.Controls.Add(this.chkEnableEdit);
+            this.s32LayerControlPanel.Controls.Add(this.btnCopySettings);
             this.s32LayerControlPanel.Controls.Add(this.btnSetPassable);
             this.s32LayerControlPanel.Controls.Add(this.btnSetImpassable);
             this.s32LayerControlPanel.Controls.Add(this.btnSaveS32);
@@ -510,7 +510,7 @@ namespace L1FlyMapViewer
             this.chkShowGrid.AutoSize = true;
             this.chkShowGrid.Checked = true;
             this.chkShowGrid.CheckState = CheckState.Checked;
-            this.chkShowGrid.Location = new Point(10, 35);
+            this.chkShowGrid.Location = new Point(490, 10);
             this.chkShowGrid.Name = "chkShowGrid";
             this.chkShowGrid.Size = new Size(90, 17);
             this.chkShowGrid.TabIndex = 5;
@@ -522,7 +522,7 @@ namespace L1FlyMapViewer
             // chkShowS32Boundary
             //
             this.chkShowS32Boundary.AutoSize = true;
-            this.chkShowS32Boundary.Location = new Point(490, 10);
+            this.chkShowS32Boundary.Location = new Point(570, 10);
             this.chkShowS32Boundary.Name = "chkShowS32Boundary";
             this.chkShowS32Boundary.Size = new Size(90, 17);
             this.chkShowS32Boundary.TabIndex = 7;
@@ -531,24 +531,23 @@ namespace L1FlyMapViewer
             this.chkShowS32Boundary.CheckedChanged += new System.EventHandler(this.S32Layer_CheckedChanged);
 
             //
-            // chkEnableEdit
+            // btnCopySettings
             //
-            this.chkEnableEdit.AutoSize = true;
-            this.chkEnableEdit.ForeColor = Color.Red;
-            this.chkEnableEdit.Location = new Point(110, 35);
-            this.chkEnableEdit.Name = "chkEnableEdit";
-            this.chkEnableEdit.Size = new Size(80, 17);
-            this.chkEnableEdit.TabIndex = 6;
-            this.chkEnableEdit.Text = "允許編輯";
-            this.chkEnableEdit.UseVisualStyleBackColor = true;
+            this.btnCopySettings.Location = new Point(520, 33);
+            this.btnCopySettings.Name = "btnCopySettings";
+            this.btnCopySettings.Size = new Size(90, 25);
+            this.btnCopySettings.TabIndex = 8;
+            this.btnCopySettings.Text = "複製設定...";
+            this.btnCopySettings.UseVisualStyleBackColor = true;
+            this.btnCopySettings.Click += new System.EventHandler(this.btnCopySettings_Click);
 
             //
             // btnSetPassable
             //
-            this.btnSetPassable.Location = new Point(210, 31);
+            this.btnSetPassable.Location = new Point(10, 33);
             this.btnSetPassable.Name = "btnSetPassable";
-            this.btnSetPassable.Size = new Size(100, 25);
-            this.btnSetPassable.TabIndex = 7;
+            this.btnSetPassable.Size = new Size(80, 25);
+            this.btnSetPassable.TabIndex = 9;
             this.btnSetPassable.Text = "允許通行";
             this.btnSetPassable.UseVisualStyleBackColor = true;
             this.btnSetPassable.Click += new System.EventHandler(this.btnSetPassable_Click);
@@ -556,10 +555,10 @@ namespace L1FlyMapViewer
             //
             // btnSetImpassable
             //
-            this.btnSetImpassable.Location = new Point(320, 31);
+            this.btnSetImpassable.Location = new Point(100, 33);
             this.btnSetImpassable.Name = "btnSetImpassable";
-            this.btnSetImpassable.Size = new Size(100, 25);
-            this.btnSetImpassable.TabIndex = 8;
+            this.btnSetImpassable.Size = new Size(80, 25);
+            this.btnSetImpassable.TabIndex = 10;
             this.btnSetImpassable.Text = "禁止通行";
             this.btnSetImpassable.UseVisualStyleBackColor = true;
             this.btnSetImpassable.Click += new System.EventHandler(this.btnSetImpassable_Click);
@@ -567,10 +566,10 @@ namespace L1FlyMapViewer
             //
             // btnSaveS32
             //
-            this.btnSaveS32.Location = new Point(430, 31);
+            this.btnSaveS32.Location = new Point(190, 33);
             this.btnSaveS32.Name = "btnSaveS32";
-            this.btnSaveS32.Size = new Size(100, 25);
-            this.btnSaveS32.TabIndex = 9;
+            this.btnSaveS32.Size = new Size(80, 25);
+            this.btnSaveS32.TabIndex = 11;
             this.btnSaveS32.Text = "保存 S32";
             this.btnSaveS32.UseVisualStyleBackColor = true;
             this.btnSaveS32.Click += new System.EventHandler(this.btnSaveS32_Click);
@@ -578,10 +577,10 @@ namespace L1FlyMapViewer
             //
             // btnReloadMap
             //
-            this.btnReloadMap.Location = new Point(540, 31);
+            this.btnReloadMap.Location = new Point(280, 33);
             this.btnReloadMap.Name = "btnReloadMap";
             this.btnReloadMap.Size = new Size(100, 25);
-            this.btnReloadMap.TabIndex = 10;
+            this.btnReloadMap.TabIndex = 12;
             this.btnReloadMap.Text = "重新載入 (F5)";
             this.btnReloadMap.UseVisualStyleBackColor = true;
             this.btnReloadMap.Click += new System.EventHandler(this.btnReloadMap_Click);
