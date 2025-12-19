@@ -2389,8 +2389,20 @@ L1MapViewer CLI - S32 檔案解析工具
                 L1MapViewer.Helper.MiniMapRenderer.RenderStats stats;
                 using (var bitmap = renderer.RenderMiniMap(mapWidth, mapHeight, targetSize, s32Files, checkedFiles, out stats))
                 {
-                    // 可選：儲存結果
-                    // bitmap.Save($"minimap_run{i+1}.png");
+                    // 儲存第一次的結果（轉換成 24bpp 以便正常顯示）
+                    if (i == 0)
+                    {
+                        string outputPath = Path.Combine(mapPath, $"minimap_test.png");
+                        using (var bmp24 = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format24bppRgb))
+                        {
+                            using (var g = Graphics.FromImage(bmp24))
+                            {
+                                g.DrawImage(bitmap, 0, 0);
+                            }
+                            bmp24.Save(outputPath, ImageFormat.Png);
+                        }
+                        Console.WriteLine($"  [Saved]      {outputPath}");
+                    }
                 }
 
                 string mode = stats.IsSimplified ? "simplified" : "full";

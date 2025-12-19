@@ -69,9 +69,9 @@ namespace L1MapViewer.Helper
             stats.ScaledWidth = scaledWidth;
             stats.ScaledHeight = scaledHeight;
 
-            // 決定渲染模式：超過 10 個 S32 時使用簡化渲染
+            // 決定渲染模式：超過 100 個 S32 時使用簡化渲染
             int s32Count = checkedFiles.Count;
-            bool useSimplifiedRendering = s32Count > 10;
+            bool useSimplifiedRendering = s32Count > 100;
             stats.IsSimplified = useSimplifiedRendering;
 
             // 建立小地圖 Bitmap
@@ -194,7 +194,7 @@ namespace L1MapViewer.Helper
                         g.DrawImage(block.bmp,
                             new Rectangle(block.destX, block.destY, block.destW, block.destH),
                             0, 0, block.bmp.Width, block.bmp.Height,
-                            GraphicsUnit.Pixel);
+                            GraphicsUnit.Pixel, vAttr);
                     }
                     drawSw.Stop();
                     totalDrawImageMs = drawSw.ElapsedMilliseconds;
