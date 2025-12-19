@@ -191,6 +191,7 @@ namespace L1MapViewer.Models
         private bool _showLayer3 = false;
         private bool _showLayer4 = true;
         private bool _showPassability = false;
+        private bool _showRegions = false;
         private bool _showGrid = false;
         private bool _showS32Boundary = false;
 
@@ -228,6 +229,15 @@ namespace L1MapViewer.Models
         {
             get => _showPassability;
             set { if (_showPassability != value) { _showPassability = value; DisplayOptionsChanged?.Invoke(this, EventArgs.Empty); } }
+        }
+
+        /// <summary>
+        /// 顯示區域標記（一般/安全/戰鬥區域）
+        /// </summary>
+        public bool ShowRegions
+        {
+            get => _showRegions;
+            set { if (_showRegions != value) { _showRegions = value; DisplayOptionsChanged?.Invoke(this, EventArgs.Empty); } }
         }
 
         /// <summary>

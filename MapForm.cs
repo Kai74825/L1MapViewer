@@ -96,6 +96,11 @@ namespace L1FlyMapViewer
         private PassableEditMode currentPassableEditMode = PassableEditMode.None;
         private Label lblPassabilityHelp; // 通行性編輯操作說明標籤
 
+        // 區域編輯模式
+        private RegionEditMode currentRegionEditMode = RegionEditMode.None;
+        private RegionType currentRegionType = RegionType.Normal;
+        private Label lblRegionHelp; // 區域編輯操作說明標籤
+
         // Layer5 透明編輯模式（狀態存於 _editState.IsLayer5EditMode）
         private Label lblLayer5Help; // Layer5 編輯操作說明標籤
 
@@ -124,6 +129,9 @@ namespace L1FlyMapViewer
 
         // R 版 tile 快取 - key: tileId, value: isRemaster
         private System.Collections.Concurrent.ConcurrentDictionary<int, bool> _tilRemasterCache = new System.Collections.Concurrent.ConcurrentDictionary<int, bool>();
+
+        // list.til 快取 - 儲存 Tile.pak 中 list.til 記錄的最大 TileId 數字
+        private int? _listTilMaxId = null;
 
         /// <summary>
         /// 預載入地圖用到的所有 tile 檔案（背景執行）
@@ -354,6 +362,21 @@ namespace L1FlyMapViewer
             lblPassabilityHelp.BringToFront();
             lblPassabilityHelp.Location = new Point(10, 10);
 
+            // 建立區域編輯操作說明標籤
+            lblRegionHelp = new Label
+            {
+                AutoSize = true,
+                BackColor = Color.FromArgb(200, 40, 80, 40),
+                ForeColor = Color.White,
+                Font = new Font("Microsoft JhengHei", 9, FontStyle.Regular),
+                Padding = new Padding(8),
+                Visible = false,
+                BorderStyle = BorderStyle.FixedSingle
+            };
+            this.s32MapPanel.Controls.Add(lblRegionHelp);
+            lblRegionHelp.BringToFront();
+            lblRegionHelp.Location = new Point(10, 10);
+
             // 註冊 F5 快捷鍵重新載入
             this.KeyPreview = true;
             this.KeyDown += MapForm_KeyDown;
@@ -414,6 +437,38 @@ namespace L1FlyMapViewer
             {
                 e.Handled = true;
                 DeleteSelectedLayer4Objects();
+            }
+            // 1/2/3 鍵：區域編輯模式下切換區域類型
+            else if (currentRegionEditMode == RegionEditMode.SetRegion)
+            {
+                RegionType newRegionType = currentRegionType;
+                string newRegionName = "";
+
+                if (e.KeyCode == Keys.D1 || e.KeyCode == Keys.NumPad1)
+                {
+                    newRegionType = RegionType.Normal;
+                    newRegionName = "一般區域";
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.D2 || e.KeyCode == Keys.NumPad2)
+                {
+                    newRegionType = RegionType.Safe;
+                    newRegionName = "安全區域";
+                    e.Handled = true;
+                }
+                else if (e.KeyCode == Keys.D3 || e.KeyCode == Keys.NumPad3)
+                {
+                    newRegionType = RegionType.Combat;
+                    newRegionName = "戰鬥區域";
+                    e.Handled = true;
+                }
+
+                if (newRegionType != currentRegionType)
+                {
+                    currentRegionType = newRegionType;
+                    this.toolStripStatusLabel1.Text = $"區域設置模式 ({newRegionName})：直接點擊格子設定區域類型 | 1/2/3鍵切換區域類型";
+                    UpdateRegionHelpLabel();
+                }
             }
             // 方向鍵：小地圖焦點時移動視圖
             else if (isMiniMapFocused && (e.KeyCode == Keys.Up || e.KeyCode == Keys.Down ||
@@ -2126,6 +2181,7 @@ namespace L1FlyMapViewer
             _tilRemasterCache.Clear();
             tileDataCache.Clear();
             Share.IdxDataList.Clear();  // 清除 idx 快取，強制重新讀取新資料夾的 idx
+            _listTilMaxId = null;       // 清除 list.til 快取
 
             Utils.ShowProgressBar(true, this);
             this.toolStripStatusLabel1.Text = "正在讀取地圖列表...";
@@ -4422,6 +4478,12 @@ namespace L1FlyMapViewer
         // 層選擇變更事件
         private void S32Layer_CheckedChanged(object sender, EventArgs e)
         {
+            // 同步 ViewState
+            if (sender == chkShowRegions)
+            {
+                _viewState.ShowRegions = chkShowRegions.Checked;
+            }
+
             // 清除快取（因為快取的 bitmap 是用特定圖層設定渲染的）
             ClearS32BlockCache();
 
@@ -4463,6 +4525,10 @@ namespace L1FlyMapViewer
             {
                 chkShowLayer5.Checked = chkFloatLayer5.Checked;
             }
+            else if (sender == chkFloatRegions)
+            {
+                chkShowRegions.Checked = chkFloatRegions.Checked;
+            }
 
             // 更新圖示顯示狀態
             UpdateLayerIconText();
@@ -4480,12 +4546,13 @@ namespace L1FlyMapViewer
             if (chkFloatGrid.Checked) enabledCount++;
             if (chkFloatS32Boundary.Checked) enabledCount++;
             if (chkFloatLayer5.Checked) enabledCount++;
+            if (chkFloatRegions.Checked) enabledCount++;
 
             if (enabledCount == 0)
             {
                 lblLayerIcon.ForeColor = Color.Gray;
             }
-            else if (enabledCount == 7)
+            else if (enabledCount == 8)
             {
                 lblLayerIcon.ForeColor = Color.LightGreen;
             }
@@ -4517,6 +4584,7 @@ namespace L1FlyMapViewer
             chkFloatGrid.Checked = chkShowGrid.Checked;
             chkFloatS32Boundary.Checked = chkShowS32Boundary.Checked;
             chkFloatLayer5.Checked = chkShowLayer5.Checked;
+            chkFloatRegions.Checked = chkShowRegions.Checked;
             UpdateLayerIconText();
         }
 
@@ -4631,6 +4699,37 @@ namespace L1FlyMapViewer
             }
         }
 
+        // 戰鬥區域設置按鈕點擊事件
+        private void btnRegionEdit_Click(object sender, EventArgs e)
+        {
+            if (currentRegionEditMode == RegionEditMode.SetRegion)
+            {
+                // 取消區域編輯模式
+                currentRegionEditMode = RegionEditMode.None;
+                btnRegionEdit.BackColor = SystemColors.Control;
+                this.toolStripStatusLabel1.Text = "已取消區域設置模式";
+                UpdateRegionHelpLabel();
+            }
+            else
+            {
+                // 啟用區域編輯模式
+                currentRegionEditMode = RegionEditMode.SetRegion;
+                btnRegionEdit.BackColor = Color.LightBlue;
+                // 取消其他編輯模式
+                currentPassableEditMode = PassableEditMode.None;
+                btnSetPassable.BackColor = SystemColors.Control;
+                btnSetImpassable.BackColor = SystemColors.Control;
+                UpdatePassabilityHelpLabel();
+                _editState.IsLayer5EditMode = false;
+                btnEditLayer5.BackColor = SystemColors.Control;
+                UpdateLayer5HelpLabel();
+                // 自動顯示區域覆蓋層
+                EnsureRegionsLayerVisible();
+                this.toolStripStatusLabel1.Text = $"區域設置模式 ({GetRegionTypeName(currentRegionType)})：點擊格子設定區域 | 1=一般 2=安全 3=戰鬥";
+                UpdateRegionHelpLabel();
+            }
+        }
+
         // 確保通行性圖層可見
         private void EnsurePassabilityLayerVisible()
         {
@@ -4641,6 +4740,119 @@ namespace L1FlyMapViewer
                 UpdateLayerIconText();
                 RenderS32Map();
             }
+        }
+
+        // 確保區域覆蓋層可見
+        private void EnsureRegionsLayerVisible()
+        {
+            if (!chkShowRegions.Checked)
+            {
+                chkShowRegions.Checked = true;
+                chkFloatRegions.Checked = true;
+                UpdateLayerIconText();
+                RenderS32Map();
+            }
+        }
+
+        // 取得區域類型名稱
+        private string GetRegionTypeName(RegionType regionType)
+        {
+            switch (regionType)
+            {
+                case RegionType.Normal:
+                    return "一般區域";
+                case RegionType.Safe:
+                    return "安全區域";
+                case RegionType.Combat:
+                    return "戰鬥區域";
+                default:
+                    return "未知";
+            }
+        }
+
+        // 取得區域類型顏色
+        private Color GetRegionTypeColor(RegionType regionType)
+        {
+            switch (regionType)
+            {
+                case RegionType.Normal:
+                    return Color.LightGreen;
+                case RegionType.Safe:
+                    return Color.LightBlue;
+                case RegionType.Combat:
+                    return Color.Orange;
+                default:
+                    return Color.Gray;
+            }
+        }
+
+        // 檢測格子的區域類型
+        private RegionType GetCellRegionType(S32Data s32Data, int cellX, int cellY)
+        {
+            // 計算第三層座標
+            int layer3X = cellX / 2;
+            if (layer3X >= 64) layer3X = 63;
+
+            if (s32Data.Layer3[cellY, layer3X] == null)
+                return RegionType.Normal;
+
+            var attr = s32Data.Layer3[cellY, layer3X];
+
+            // 檢查安全區域標記 (0x02)
+            bool isSafe = (attr.Attribute1 & 0x02) != 0 || (attr.Attribute2 & 0x02) != 0;
+            // 檢查戰鬥區域標記 (0x04)
+            bool isCombat = (attr.Attribute1 & 0x04) != 0 || (attr.Attribute2 & 0x04) != 0;
+
+            if (isCombat) return RegionType.Combat;
+            if (isSafe) return RegionType.Safe;
+            return RegionType.Normal;
+        }
+
+        // 設定格子的區域類型
+        private void SetCellRegionType(S32Data s32Data, int cellX, int cellY, RegionType regionType)
+        {
+            // 計算第三層座標
+            int layer3X = cellX / 2;
+            if (layer3X >= 64) layer3X = 63;
+
+            // 計算遊戲座標
+            int gameX = s32Data.SegInfo.nLinBeginX + layer3X;
+            int gameY = s32Data.SegInfo.nLinBeginY + cellY;
+
+            // 確保屬性存在
+            if (s32Data.Layer3[cellY, layer3X] == null)
+            {
+                s32Data.Layer3[cellY, layer3X] = new MapAttribute { Attribute1 = 0, Attribute2 = 0 };
+            }
+
+            var attr = s32Data.Layer3[cellY, layer3X];
+
+            // 先清除現有的區域標記
+            attr.Attribute1 = (short)(attr.Attribute1 & ~0x06); // 清除 0x02 和 0x04 位元
+            attr.Attribute2 = (short)(attr.Attribute2 & ~0x06); // 清除 0x02 和 0x04 位元
+
+            // 根據區域類型設定標記
+            switch (regionType)
+            {
+                case RegionType.Safe:
+                    attr.Attribute1 = (short)(attr.Attribute1 | 0x02); // 設定安全區域標記
+                    attr.Attribute2 = (short)(attr.Attribute2 | 0x02);
+                    this.toolStripStatusLabel1.Text = $"已設定 ({gameX},{gameY}) 為安全區域";
+                    break;
+                case RegionType.Combat:
+                    attr.Attribute1 = (short)(attr.Attribute1 | 0x04); // 設定戰鬥區域標記
+                    attr.Attribute2 = (short)(attr.Attribute2 | 0x04);
+                    this.toolStripStatusLabel1.Text = $"已設定 ({gameX},{gameY}) 為戰鬥區域";
+                    break;
+                case RegionType.Normal:
+                default:
+                    // 一般區域不需要特殊標記（已在上面清除）
+                    this.toolStripStatusLabel1.Text = $"已設定 ({gameX},{gameY}) 為一般區域";
+                    break;
+            }
+
+            s32Data.IsModified = true;
+            RenderS32Map();
         }
 
         // 透明編輯按鈕點擊事件
@@ -4736,6 +4948,27 @@ namespace L1FlyMapViewer
             lblPassabilityHelp.ForeColor = borderColor;
             lblPassabilityHelp.Visible = true;
             lblPassabilityHelp.BringToFront();
+        }
+
+        // 更新區域編輯操作說明標籤
+        private void UpdateRegionHelpLabel()
+        {
+            if (currentRegionEditMode == RegionEditMode.None)
+            {
+                lblRegionHelp.Visible = false;
+                return;
+            }
+
+            string regionTypeName = GetRegionTypeName(currentRegionType);
+            Color regionColor = GetRegionTypeColor(currentRegionType);
+
+            lblRegionHelp.Text = $"【區域設置模式 - {regionTypeName}】\n" +
+                                 "• 直接點擊格子：設定該格區域類型\n" +
+                                 "• 1鍵：一般區域 | 2鍵：安全區域 | 3鍵：戰鬥區域\n" +
+                                 "• 再按按鈕：取消模式";
+            lblRegionHelp.ForeColor = regionColor;
+            lblRegionHelp.Visible = true;
+            lblRegionHelp.BringToFront();
         }
 
         // 重新載入按鈕點擊事件
@@ -4974,6 +5207,11 @@ namespace L1FlyMapViewer
                 if (showPassable)
                 {
                     DrawPassableOverlayViewport(viewportBitmap, currentMap, worldRect);
+                }
+
+                if (_viewState.ShowRegions)
+                {
+                    DrawRegionsOverlayViewport(viewportBitmap, currentMap, worldRect);
                 }
 
                 if (showGrid)
@@ -5871,6 +6109,65 @@ namespace L1FlyMapViewer
             }
         }
 
+        // 繪製區域覆蓋層（Viewport 版本）
+        private void DrawRegionsOverlayViewport(Bitmap bitmap, Struct.L1Map currentMap, Rectangle worldRect)
+        {
+            using (Graphics g = Graphics.FromImage(bitmap))
+            {
+                // 定義區域顏色（半透明）
+                using (Brush safeRegionBrush = new SolidBrush(Color.FromArgb(60, 0, 150, 255)))   // 半透明藍色
+                using (Brush combatRegionBrush = new SolidBrush(Color.FromArgb(60, 255, 100, 0))) // 半透明橙色
+                using (Brush normalRegionBrush = new SolidBrush(Color.FromArgb(40, 50, 255, 50))) // 半透明綠色
+                {
+                    foreach (var s32Data in _document.S32Files.Values)
+                    {
+                        int[] loc = s32Data.SegInfo.GetLoc(1.0);
+                        int mx = loc[0];
+                        int my = loc[1];
+
+                        for (int y = 0; y < 64; y++)
+                        {
+                            for (int x = 0; x < 64; x++)
+                            {
+                                var attr = s32Data.Layer3[y, x];
+                                if (attr == null) continue;
+
+                                // 檢查區域類型
+                                bool isSafe = (attr.Attribute1 & 0x02) != 0 || (attr.Attribute2 & 0x02) != 0;
+                                bool isCombat = (attr.Attribute1 & 0x04) != 0 || (attr.Attribute2 & 0x04) != 0;
+
+                                // 只繪製特殊區域（安全區或戰鬥區）
+                                if (!isSafe && !isCombat) continue;
+
+                                int x1 = x * 2;
+                                int localBaseX = 0 - 24 * (x1 / 2);
+                                int localBaseY = 63 * 12 - 12 * (x1 / 2);
+
+                                int X = mx + localBaseX + x1 * 24 + y * 24 - worldRect.X;
+                                int Y = my + localBaseY + y * 12 - worldRect.Y;
+
+                                // 跳過不在 Viewport 內的格子
+                                if (X + 48 < 0 || X > worldRect.Width || Y + 24 < 0 || Y > worldRect.Height)
+                                    continue;
+
+                                // 繪製菱形格子的區域標記
+                                Point[] diamond = new Point[]
+                                {
+                                    new Point(X + 24, Y + 0),      // 上
+                                    new Point(X + 48, Y + 12),     // 右
+                                    new Point(X + 24, Y + 24),     // 下
+                                    new Point(X + 0, Y + 12)       // 左
+                                };
+
+                                Brush regionBrush = isCombat ? combatRegionBrush : safeRegionBrush;
+                                g.FillPolygon(regionBrush, diamond);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         // 繪製 Layer5 覆蓋層（透明圖塊標記）
         private void DrawLayer5OverlayViewport(Bitmap bitmap, Struct.L1Map currentMap, Rectangle worldRect, bool isLayer5Edit)
         {
@@ -6616,10 +6913,11 @@ namespace L1FlyMapViewer
                         }
                     }
 
-                    // 計算 Tile.idx 中 1-9999 範圍內已使用的 TileId 數量
-                    int usedInIdx = GetTileIdxUsedCount();
-                    int availableSlots = 9999 - usedInIdx;
-                    lblTileList.Text = $"顯示 {lvTiles.Items.Count} 個 Tile (剩餘 {availableSlots} 個空位)";
+                    // 計算剩餘空位：list.til 中的最大值 - 實際使用的最大 TileId
+                    int listTilMax = GetListTilMaxId();
+                    int actualMaxId = GetActualMaxTileId();
+                    int availableSlots = listTilMax - actualMaxId;
+                    lblTileList.Text = $"顯示 {lvTiles.Items.Count} 個 Tile (剩餘 {availableSlots} 個空位, 上限 {listTilMax})";
                 });
             });
         }
@@ -6747,13 +7045,14 @@ namespace L1FlyMapViewer
                 }
             }
 
-            // 計算 Tile.idx 中 1-9999 範圍內已使用的 TileId 數量
-            int usedInIdx = GetTileIdxUsedCount();
-            int availableSlots = 9999 - usedInIdx;
+            // 計算剩餘空位：list.til 中的最大值 - 實際使用的最大 TileId
+            int listTilMax = GetListTilMaxId();
+            int actualMaxId = GetActualMaxTileId();
+            int availableSlots = listTilMax - actualMaxId;
 
             string statusText = string.IsNullOrWhiteSpace(searchText)
-                ? $"顯示 {lvTiles.Items.Count} 個 Tile (剩餘 {availableSlots} 個空位)"
-                : $"搜尋結果: {lvTiles.Items.Count}/{totalCount} 個 Tile (剩餘 {availableSlots} 個空位)";
+                ? $"顯示 {lvTiles.Items.Count} 個 Tile (剩餘 {availableSlots} 個空位, 上限 {listTilMax})"
+                : $"搜尋結果: {lvTiles.Items.Count}/{totalCount} 個 Tile (剩餘 {availableSlots} 個空位, 上限 {listTilMax})";
             lblTileList.Text = statusText;
         }
 
@@ -6794,6 +7093,158 @@ namespace L1FlyMapViewer
                 // 忽略錯誤
             }
             return 0;
+        }
+
+        /// <summary>
+        /// 讀取 list.til 中記錄的最大 TileId
+        /// list.til 是一個包含單一 int32 數字的檔案，表示 Tile 的最大 ID
+        /// </summary>
+        private int GetListTilMaxId(bool forceReload = false)
+        {
+            if (_listTilMaxId.HasValue && !forceReload)
+                return _listTilMaxId.Value;
+
+            try
+            {
+                byte[] data = L1PakReader.UnPack("Tile", "list.til");
+                if (data != null && data.Length >= 4)
+                {
+                    _listTilMaxId = BitConverter.ToInt32(data, 0);
+                    return _listTilMaxId.Value;
+                }
+            }
+            catch
+            {
+                // 忽略錯誤
+            }
+            return 9999; // 預設值
+        }
+
+        /// <summary>
+        /// 取得 Tile.idx 中實際使用的最大 TileId
+        /// </summary>
+        private int GetActualMaxTileId()
+        {
+            int maxId = 0;
+            try
+            {
+                // 觸發載入 Tile.idx
+                L1IdxReader.Find("Tile", "1.til");
+
+                if (Share.IdxDataList.TryGetValue("Tile", out var tileIdx))
+                {
+                    foreach (var key in tileIdx.Keys)
+                    {
+                        if (key.EndsWith(".til") && key != "list.til")
+                        {
+                            string numPart = key.Substring(0, key.Length - 4);
+                            if (int.TryParse(numPart, out int tileId) && tileId > maxId)
+                            {
+                                maxId = tileId;
+                            }
+                        }
+                    }
+                }
+            }
+            catch
+            {
+                // 忽略錯誤
+            }
+            return maxId;
+        }
+
+        /// <summary>
+        /// 檢查 list.til 數值按鈕點擊事件
+        /// </summary>
+        private void btnToolCheckListTil_Click(object sender, EventArgs e)
+        {
+            try
+            {
+                int listTilValue = GetListTilMaxId(true); // 強制重新讀取
+                int actualMaxId = GetActualMaxTileId();
+                int usedCount = GetTileIdxUsedCount();
+
+                if (listTilValue > actualMaxId + 1)
+                {
+                    int suggestedValue = actualMaxId + 1;
+                    var result = MessageBox.Show(
+                        $"list.til 檢查結果：\n\n" +
+                        $"• list.til 記錄的上限：{listTilValue}\n" +
+                        $"• 實際使用的最大 TileId：{actualMaxId}\n" +
+                        $"• Tile.idx 中的 Tile 數量：{usedCount}\n\n" +
+                        $"list.til 的數值 ({listTilValue}) 大於實際使用的最大 TileId + 1 ({actualMaxId + 1})。\n\n" +
+                        $"是否要將 list.til 修改為 {suggestedValue}？",
+                        "list.til 數值檢查",
+                        MessageBoxButtons.YesNo,
+                        MessageBoxIcon.Question);
+
+                    if (result == DialogResult.Yes)
+                    {
+                        if (UpdateListTil(suggestedValue))
+                        {
+                            MessageBox.Show(
+                                $"list.til 已更新為 {suggestedValue}。\n\n剩餘可用空位：{suggestedValue - actualMaxId}",
+                                "更新成功",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Information);
+
+                            // 更新 Tile 清單顯示
+                            UpdateTileList(txtTileSearch.Text);
+                        }
+                        else
+                        {
+                            MessageBox.Show(
+                                "更新 list.til 失敗，請檢查檔案權限。",
+                                "更新失敗",
+                                MessageBoxButtons.OK,
+                                MessageBoxIcon.Error);
+                        }
+                    }
+                }
+                else
+                {
+                    MessageBox.Show(
+                        $"list.til 檢查結果：\n\n" +
+                        $"• list.til 記錄的上限：{listTilValue}\n" +
+                        $"• 實際使用的最大 TileId：{actualMaxId}\n" +
+                        $"• Tile.idx 中的 Tile 數量：{usedCount}\n" +
+                        $"• 剩餘可用空位：{listTilValue - actualMaxId}\n\n" +
+                        $"list.til 數值正常，無需更新。",
+                        "list.til 數值檢查",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show(
+                    $"檢查 list.til 時發生錯誤：{ex.Message}",
+                    "錯誤",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
+        }
+
+        /// <summary>
+        /// 更新 list.til 的數值並存回 pak
+        /// </summary>
+        private bool UpdateListTil(int newValue)
+        {
+            try
+            {
+                byte[] data = BitConverter.GetBytes(newValue);
+                bool success = L1PakWriter.AppendFile("Tile", "list.til", data);
+                if (success)
+                {
+                    _listTilMaxId = newValue;
+                }
+                return success;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"UpdateListTil error: {ex.Message}");
+                return false;
+            }
         }
 
         // 載入 Tile 縮圖（使用快取）
@@ -7030,6 +7481,13 @@ namespace L1FlyMapViewer
                             if (currentPassableEditMode != PassableEditMode.None && e.Button == MouseButtons.Left)
                             {
                                 SetCellPassable(s32Data, x, y, currentPassableEditMode == PassableEditMode.SetPassable);
+                                return;
+                            }
+
+                            // 區域編輯模式：單擊設定區域類型
+                            if (currentRegionEditMode != RegionEditMode.None && e.Button == MouseButtons.Left)
+                            {
+                                SetCellRegionType(s32Data, x, y, currentRegionType);
                                 return;
                             }
 

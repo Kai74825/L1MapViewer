@@ -108,11 +108,14 @@ namespace L1FlyMapViewer
         private CheckBox chkFloatGrid;
         private CheckBox chkFloatS32Boundary;
         private CheckBox chkFloatLayer5;
+        private CheckBox chkFloatRegions;
         private CheckBox chkShowPassable;
         private CheckBox chkShowLayer5;
         private CheckBox chkShowGrid;
         private CheckBox chkShowS32Boundary;
+        private CheckBox chkShowRegions;
         private Button btnCopySettings;
+        private Button btnRegionEdit;
         private Button btnCopyMapCoords;
         private Button btnSetPassable;
         private Button btnSetImpassable;
@@ -229,8 +232,10 @@ namespace L1FlyMapViewer
             this.chkShowPassable = new CheckBox();
             this.chkShowGrid = new CheckBox();
             this.chkShowS32Boundary = new CheckBox();
+            this.chkShowRegions = new CheckBox();
             this.btnCopySettings = new Button();
             this.btnCopyMapCoords = new Button();
+            this.btnRegionEdit = new Button();
             this.btnSetPassable = new Button();
             this.btnSetImpassable = new Button();
             this.btnEditLayer5 = new Button();
@@ -252,6 +257,7 @@ namespace L1FlyMapViewer
             this.chkFloatGrid = new CheckBox();
             this.chkFloatS32Boundary = new CheckBox();
             this.chkFloatLayer5 = new CheckBox();
+            this.chkFloatRegions = new CheckBox();
             this.chkShowLayer5 = new CheckBox();
 
             this.menuStrip1.SuspendLayout();
@@ -670,13 +676,14 @@ namespace L1FlyMapViewer
             this.s32LayerControlPanel.Controls.Add(this.btnSetPassable);
             this.s32LayerControlPanel.Controls.Add(this.btnSetImpassable);
             this.s32LayerControlPanel.Controls.Add(this.btnEditLayer5);
+            this.s32LayerControlPanel.Controls.Add(this.btnRegionEdit);
             this.s32LayerControlPanel.Controls.Add(this.btnSaveS32);
             this.s32LayerControlPanel.Controls.Add(this.btnReloadMap);
             this.s32LayerControlPanel.Controls.Add(this.btnAnalyzeAttr);
             this.s32LayerControlPanel.Dock = DockStyle.Top;
             this.s32LayerControlPanel.Location = new Point(0, 0);
             this.s32LayerControlPanel.Name = "s32LayerControlPanel";
-            this.s32LayerControlPanel.Size = new Size(696, 35);
+            this.s32LayerControlPanel.Size = new Size(696, 65);
             this.s32LayerControlPanel.TabIndex = 0;
 
             //
@@ -776,9 +783,21 @@ namespace L1FlyMapViewer
             this.chkShowLayer5.CheckedChanged += new System.EventHandler(this.S32Layer_CheckedChanged);
 
             //
+            // chkShowRegions
+            //
+            this.chkShowRegions.AutoSize = true;
+            this.chkShowRegions.Location = new Point(650, 10);
+            this.chkShowRegions.Name = "chkShowRegions";
+            this.chkShowRegions.Size = new Size(70, 17);
+            this.chkShowRegions.TabIndex = 16;
+            this.chkShowRegions.Text = "戰鬥區域";
+            this.chkShowRegions.UseVisualStyleBackColor = true;
+            this.chkShowRegions.CheckedChanged += new System.EventHandler(this.S32Layer_CheckedChanged);
+
+            //
             // btnCopySettings
             //
-            this.btnCopySettings.Location = new Point(520, 5);
+            this.btnCopySettings.Location = new Point(210, 5);
             this.btnCopySettings.Name = "btnCopySettings";
             this.btnCopySettings.Size = new Size(90, 25);
             this.btnCopySettings.TabIndex = 8;
@@ -789,7 +808,7 @@ namespace L1FlyMapViewer
             //
             // btnCopyMapCoords
             //
-            this.btnCopyMapCoords.Location = new Point(615, 5);
+            this.btnCopyMapCoords.Location = new Point(310, 5);
             this.btnCopyMapCoords.Name = "btnCopyMapCoords";
             this.btnCopyMapCoords.Size = new Size(75, 25);
             this.btnCopyMapCoords.TabIndex = 13;
@@ -800,7 +819,7 @@ namespace L1FlyMapViewer
             //
             // btnSetPassable
             //
-            this.btnSetPassable.Location = new Point(10, 5);
+            this.btnSetPassable.Location = new Point(10, 35);
             this.btnSetPassable.Name = "btnSetPassable";
             this.btnSetPassable.Size = new Size(80, 25);
             this.btnSetPassable.TabIndex = 9;
@@ -811,7 +830,7 @@ namespace L1FlyMapViewer
             //
             // btnSetImpassable
             //
-            this.btnSetImpassable.Location = new Point(100, 5);
+            this.btnSetImpassable.Location = new Point(100, 35);
             this.btnSetImpassable.Name = "btnSetImpassable";
             this.btnSetImpassable.Size = new Size(80, 25);
             this.btnSetImpassable.TabIndex = 10;
@@ -822,7 +841,7 @@ namespace L1FlyMapViewer
             //
             // btnEditLayer5
             //
-            this.btnEditLayer5.Location = new Point(190, 5);
+            this.btnEditLayer5.Location = new Point(190, 35);
             this.btnEditLayer5.Name = "btnEditLayer5";
             this.btnEditLayer5.Size = new Size(80, 25);
             this.btnEditLayer5.TabIndex = 14;
@@ -831,9 +850,20 @@ namespace L1FlyMapViewer
             this.btnEditLayer5.Click += new System.EventHandler(this.btnEditLayer5_Click);
 
             //
+            // btnRegionEdit
+            //
+            this.btnRegionEdit.Location = new Point(280, 35);
+            this.btnRegionEdit.Name = "btnRegionEdit";
+            this.btnRegionEdit.Size = new Size(80, 25);
+            this.btnRegionEdit.TabIndex = 15;
+            this.btnRegionEdit.Text = "戰鬥區域";
+            this.btnRegionEdit.UseVisualStyleBackColor = true;
+            this.btnRegionEdit.Click += new System.EventHandler(this.btnRegionEdit_Click);
+
+            //
             // btnSaveS32
             //
-            this.btnSaveS32.Location = new Point(280, 5);
+            this.btnSaveS32.Location = new Point(120, 5);
             this.btnSaveS32.Name = "btnSaveS32";
             this.btnSaveS32.Size = new Size(80, 25);
             this.btnSaveS32.TabIndex = 11;
@@ -844,13 +874,24 @@ namespace L1FlyMapViewer
             //
             // btnReloadMap
             //
-            this.btnReloadMap.Location = new Point(370, 5);
+            this.btnReloadMap.Location = new Point(10, 5);
             this.btnReloadMap.Name = "btnReloadMap";
             this.btnReloadMap.Size = new Size(100, 25);
             this.btnReloadMap.TabIndex = 12;
             this.btnReloadMap.Text = "重新載入 (F5)";
             this.btnReloadMap.UseVisualStyleBackColor = true;
             this.btnReloadMap.Click += new System.EventHandler(this.btnReloadMap_Click);
+
+            //
+            // btnAnalyzeAttr
+            //
+            this.btnAnalyzeAttr.Location = new Point(315, 35);
+            this.btnAnalyzeAttr.Name = "btnAnalyzeAttr";
+            this.btnAnalyzeAttr.Size = new Size(80, 25);
+            this.btnAnalyzeAttr.TabIndex = 17;
+            this.btnAnalyzeAttr.Text = "分析屬性";
+            this.btnAnalyzeAttr.UseVisualStyleBackColor = true;
+            this.btnAnalyzeAttr.Visible = false;
 
             //
             // s32MapPanel
@@ -902,7 +943,7 @@ namespace L1FlyMapViewer
             this.layerFloatPanel.Controls.Add(this.layerPopupPanel);
             this.layerFloatPanel.Location = new Point(10, 10);
             this.layerFloatPanel.Name = "layerFloatPanel";
-            this.layerFloatPanel.Size = new Size(90, 186);
+            this.layerFloatPanel.Size = new Size(90, 210);
             this.layerFloatPanel.TabIndex = 10;
             this.layerFloatPanel.Anchor = AnchorStyles.Top | AnchorStyles.Right;
 
@@ -930,10 +971,11 @@ namespace L1FlyMapViewer
             this.layerPopupPanel.Controls.Add(this.chkFloatPassable);
             this.layerPopupPanel.Controls.Add(this.chkFloatGrid);
             this.layerPopupPanel.Controls.Add(this.chkFloatS32Boundary);
+            this.layerPopupPanel.Controls.Add(this.chkFloatRegions);
             this.layerPopupPanel.Location = new Point(0, 24);
             this.layerPopupPanel.Name = "layerPopupPanel";
             this.layerPopupPanel.Padding = new Padding(5);
-            this.layerPopupPanel.Size = new Size(90, 162);
+            this.layerPopupPanel.Size = new Size(90, 184);
             this.layerPopupPanel.TabIndex = 1;
             this.layerPopupPanel.Visible = true;
 
@@ -1031,6 +1073,19 @@ namespace L1FlyMapViewer
             this.chkFloatS32Boundary.Text = "S32邊界";
             this.chkFloatS32Boundary.UseVisualStyleBackColor = true;
             this.chkFloatS32Boundary.CheckedChanged += new System.EventHandler(this.chkFloatLayer_CheckedChanged);
+
+            //
+            // chkFloatRegions
+            //
+            this.chkFloatRegions.AutoSize = true;
+            this.chkFloatRegions.ForeColor = Color.FromArgb(255, 180, 100);
+            this.chkFloatRegions.Location = new Point(8, 159);
+            this.chkFloatRegions.Name = "chkFloatRegions";
+            this.chkFloatRegions.Size = new Size(80, 19);
+            this.chkFloatRegions.TabIndex = 7;
+            this.chkFloatRegions.Text = "戰鬥區域";
+            this.chkFloatRegions.UseVisualStyleBackColor = true;
+            this.chkFloatRegions.CheckedChanged += new System.EventHandler(this.chkFloatLayer_CheckedChanged);
 
             //
             // rightPanel

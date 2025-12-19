@@ -244,6 +244,30 @@ namespace L1MapViewer.Models
 
         #endregion
 
+        #region 區域編輯
+
+        /// <summary>
+        /// 區域編輯模式
+        /// </summary>
+        public RegionEditMode RegionMode { get; set; } = RegionEditMode.None;
+
+        /// <summary>
+        /// 當前選擇的區域類型
+        /// </summary>
+        public RegionType CurrentRegionType { get; set; } = RegionType.Normal;
+
+        /// <summary>
+        /// 區域編輯多邊形頂點
+        /// </summary>
+        public List<Point> RegionPolygonPoints { get; private set; } = new List<Point>();
+
+        /// <summary>
+        /// 是否正在繪製區域多邊形
+        /// </summary>
+        public bool IsDrawingRegionPolygon { get; set; }
+
+        #endregion
+
         #region Layer5 透明編輯
 
         /// <summary>
@@ -325,5 +349,24 @@ namespace L1MapViewer.Models
         None,
         SetPassable,
         SetImpassable
+    }
+
+    /// <summary>
+    /// 區域編輯模式
+    /// </summary>
+    public enum RegionEditMode
+    {
+        None,           // 無區域編輯
+        SetRegion       // 設置區域
+    }
+
+    /// <summary>
+    /// 區域類型
+    /// </summary>
+    public enum RegionType
+    {
+        Normal,     // 一般區域（無特殊標記）
+        Safe,       // 安全區域（0x02 位元）
+        Combat      // 戰鬥區域（0x04 位元）
     }
 }
