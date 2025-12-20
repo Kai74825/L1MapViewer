@@ -12416,26 +12416,19 @@ namespace L1FlyMapViewer
                         System.Runtime.InteropServices.Marshal.Copy(whiteLine, 0, (IntPtr)(ptr + y * rowpix), rowpix);
                     }
 
-                    // 計算偏移量，讓圖片置中
-                    int offsetX = (int)((tempWidth / 2.0f) - ((pixelMinX + pixelMaxX) / 2.0f - pixelMinX) * preScale);
-                    int offsetY = (int)((tempHeight / 2.0f) - ((pixelMinY + pixelMaxY) / 2.0f - pixelMinY) * preScale);
+                    // 高速平行繪製（縮圖不需要精確 Layer 順序）
+                    // 預先計算所有繪製參數
+                    var drawItems = objectPixels.Select(item => {
+                        int pixelX = (int)((item.px - pixelMinX + margin) * preScale);
+                        int pixelY = (int)((item.py - pixelMinY + margin) * preScale);
+                        return (item.obj, pixelX, pixelY);
+                    }).ToArray();
 
-                    // 按 Layer 排序後繪製（使用與主畫布完全相同的繪製方式）
-                    foreach (var item in objectPixels.OrderBy(o => o.obj.Layer))
+                    // 平行繪製所有 tiles
+                    Parallel.ForEach(drawItems, item =>
                     {
-                        var obj = item.obj;
-
-                        // 使用預先計算的座標，套用縮放和偏移
-                        int pixelX = (int)((item.px - pixelMinX) * preScale) + offsetX - (int)(tempWidth / 2.0f - actualWidth * preScale / 2.0f);
-                        int pixelY = (int)((item.py - pixelMinY) * preScale) + offsetY - (int)(tempHeight / 2.0f - actualHeight * preScale / 2.0f);
-
-                        // 簡化座標計算
-                        pixelX = (int)((item.px - pixelMinX + margin) * preScale);
-                        pixelY = (int)((item.py - pixelMinY + margin) * preScale);
-
-                        // 使用與主畫布相同的繪製函數
-                        DrawTilToBufferDirect(pixelX, pixelY, obj.TileId, obj.IndexId, rowpix, ptr, tempWidth, tempHeight);
-                    }
+                        DrawTilToBufferDirect(item.pixelX, item.pixelY, item.obj.TileId, item.obj.IndexId, rowpix, ptr, tempWidth, tempHeight);
+                    });
                 }
 
                 tempBitmap.UnlockBits(bmpData);
