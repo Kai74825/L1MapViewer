@@ -186,5 +186,142 @@ namespace L1MapViewer.Helper
             _allGroups.Clear();
             TotalObjects = 0;
         }
+
+        /// <summary>
+        /// 增量新增單個物件到索引
+        /// </summary>
+        public void AddObject(S32Data s32Data, ObjectTile obj)
+        {
+            int segStartX = s32Data.SegInfo.nLinBeginX;
+            int segStartY = s32Data.SegInfo.nLinBeginY;
+
+            // 計算遊戲座標
+            int gameX = segStartX + obj.X / 2;
+            int gameY = segStartY + obj.Y;
+
+            // 計算網格座標
+            int gridX = gameX / GridSize;
+            int gridY = gameY / GridSize;
+
+            var key = (gridX, gridY);
+            if (!_grid.TryGetValue(key, out var list))
+            {
+                list = new List<Layer4Entry>();
+                _grid[key] = list;
+            }
+
+            list.Add(new Layer4Entry
+            {
+                S32Data = s32Data,
+                Object = obj,
+                GameX = gameX,
+                GameY = gameY
+            });
+
+            // 更新群組字典
+            if (!_allGroups.TryGetValue(obj.GroupId, out var groupList))
+            {
+                groupList = new List<(S32Data, ObjectTile)>();
+                _allGroups[obj.GroupId] = groupList;
+            }
+            groupList.Add((s32Data, obj));
+
+            TotalObjects++;
+        }
+
+        /// <summary>
+        /// 增量新增多個物件到索引（批次處理）
+        /// </summary>
+        public void AddObjects(S32Data s32Data, IEnumerable<ObjectTile> objects)
+        {
+            int segStartX = s32Data.SegInfo.nLinBeginX;
+            int segStartY = s32Data.SegInfo.nLinBeginY;
+
+            foreach (var obj in objects)
+            {
+                // 計算遊戲座標
+                int gameX = segStartX + obj.X / 2;
+                int gameY = segStartY + obj.Y;
+
+                // 計算網格座標
+                int gridX = gameX / GridSize;
+                int gridY = gameY / GridSize;
+
+                var key = (gridX, gridY);
+                if (!_grid.TryGetValue(key, out var list))
+                {
+                    list = new List<Layer4Entry>();
+                    _grid[key] = list;
+                }
+
+                list.Add(new Layer4Entry
+                {
+                    S32Data = s32Data,
+                    Object = obj,
+                    GameX = gameX,
+                    GameY = gameY
+                });
+
+                // 更新群組字典
+                if (!_allGroups.TryGetValue(obj.GroupId, out var groupList))
+                {
+                    groupList = new List<(S32Data, ObjectTile)>();
+                    _allGroups[obj.GroupId] = groupList;
+                }
+                groupList.Add((s32Data, obj));
+
+                TotalObjects++;
+            }
+        }
+
+        /// <summary>
+        /// 增量移除單個物件從索引
+        /// </summary>
+        public void RemoveObject(S32Data s32Data, ObjectTile obj)
+        {
+            int segStartX = s32Data.SegInfo.nLinBeginX;
+            int segStartY = s32Data.SegInfo.nLinBeginY;
+
+            // 計算遊戲座標
+            int gameX = segStartX + obj.X / 2;
+            int gameY = segStartY + obj.Y;
+
+            // 計算網格座標
+            int gridX = gameX / GridSize;
+            int gridY = gameY / GridSize;
+
+            var key = (gridX, gridY);
+            if (_grid.TryGetValue(key, out var list))
+            {
+                list.RemoveAll(e => e.S32Data == s32Data && e.Object == obj);
+                if (list.Count == 0)
+                {
+                    _grid.Remove(key);
+                }
+            }
+
+            // 更新群組字典
+            if (_allGroups.TryGetValue(obj.GroupId, out var groupList))
+            {
+                groupList.RemoveAll(g => g.s32 == s32Data && g.obj == obj);
+                if (groupList.Count == 0)
+                {
+                    _allGroups.Remove(obj.GroupId);
+                }
+            }
+
+            TotalObjects--;
+        }
+
+        /// <summary>
+        /// 增量移除多個物件從索引
+        /// </summary>
+        public void RemoveObjects(S32Data s32Data, IEnumerable<ObjectTile> objects)
+        {
+            foreach (var obj in objects)
+            {
+                RemoveObject(s32Data, obj);
+            }
+        }
     }
 }

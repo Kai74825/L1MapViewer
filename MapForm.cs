@@ -307,6 +307,42 @@ namespace L1FlyMapViewer
         // Layer4 空間索引 - 用於快速查找附近的 Layer4 物件
         private Layer4SpatialIndex _layer4SpatialIndex = new Layer4SpatialIndex();
 
+        #region Layer4 Spatial Index Helpers
+
+        /// <summary>
+        /// 增量新增單個 Layer4 物件到空間索引
+        /// </summary>
+        private void Layer4Index_Add(S32Data s32Data, ObjectTile obj)
+        {
+            _layer4SpatialIndex.AddObject(s32Data, obj);
+        }
+
+        /// <summary>
+        /// 增量新增多個 Layer4 物件到空間索引
+        /// </summary>
+        private void Layer4Index_AddRange(S32Data s32Data, IEnumerable<ObjectTile> objects)
+        {
+            _layer4SpatialIndex.AddObjects(s32Data, objects);
+        }
+
+        /// <summary>
+        /// 增量移除單個 Layer4 物件從空間索引
+        /// </summary>
+        private void Layer4Index_Remove(S32Data s32Data, ObjectTile obj)
+        {
+            _layer4SpatialIndex.RemoveObject(s32Data, obj);
+        }
+
+        /// <summary>
+        /// 增量移除多個 Layer4 物件從空間索引
+        /// </summary>
+        private void Layer4Index_RemoveRange(S32Data s32Data, IEnumerable<ObjectTile> objects)
+        {
+            _layer4SpatialIndex.RemoveObjects(s32Data, objects);
+        }
+
+        #endregion
+
         // 勾選的 S32 檔案快取（避免每次渲染都遍歷 UI）
         private HashSet<string> _checkedS32Files = new HashSet<string>();
 
@@ -1102,7 +1138,7 @@ namespace L1FlyMapViewer
                         // obj.X 是 Layer1 座標，可能超過 127（物件可以跨格子）
                         if (objLocalLayer1X >= 0 && objLocalY >= 0 && objLocalY < 64)
                         {
-                            targetS32.Layer4.Add(new ObjectTile
+                            var newObj = new ObjectTile
                             {
                                 GroupId = objData.GroupId,
                                 X = objLocalLayer1X,  // 使用 Layer1 座標
@@ -1110,7 +1146,9 @@ namespace L1FlyMapViewer
                                 Layer = objData.Layer,
                                 IndexId = objData.IndexId,
                                 TileId = objData.TileId
-                            });
+                            };
+                            targetS32.Layer4.Add(newObj);
+                            Layer4Index_Add(targetS32, newObj);
                             layer4Count++;
 
                             // 記錄新增的物件到 Undo（還原時要刪除）
@@ -1407,6 +1445,7 @@ namespace L1FlyMapViewer
                         TileId = objInfo.TileId
                     };
                     targetS32.Layer4.Add(newObj);
+                    Layer4Index_Add(targetS32, newObj);
                     targetS32.IsModified = true;
                 }
             }
@@ -1428,6 +1467,7 @@ namespace L1FlyMapViewer
                     if (objToRemove != null)
                     {
                         targetS32.Layer4.Remove(objToRemove);
+                        Layer4Index_Remove(targetS32, objToRemove);
                         targetS32.IsModified = true;
                     }
                 }
@@ -1523,6 +1563,7 @@ namespace L1FlyMapViewer
                         TileId = objInfo.TileId
                     };
                     targetS32.Layer4.Add(newObj);
+                    Layer4Index_Add(targetS32, newObj);
                     targetS32.IsModified = true;
                 }
             }
@@ -1544,6 +1585,7 @@ namespace L1FlyMapViewer
                     if (objToRemove != null)
                     {
                         targetS32.Layer4.Remove(objToRemove);
+                        Layer4Index_Remove(targetS32, objToRemove);
                         targetS32.IsModified = true;
                     }
                 }
@@ -9103,6 +9145,7 @@ namespace L1FlyMapViewer
                         {
                             s32Data.Layer4.Remove(obj);
                         }
+                        Layer4Index_RemoveRange(s32Data, kvp.Value);
                         s32Data.IsModified = true;
                     }
                 }
@@ -9208,6 +9251,7 @@ namespace L1FlyMapViewer
 
                     currentS32Data.Layer4.Remove(obj);
                 }
+                Layer4Index_RemoveRange(currentS32Data, objectsAtCell);
 
                 // 儲存 Undo 記錄
                 PushUndoAction(undoAction);
@@ -9548,6 +9592,7 @@ namespace L1FlyMapViewer
                         if (MessageBox.Show($"確定要刪除此物件嗎？\n(Group:{objToDelete.GroupId}, Layer:{objToDelete.Layer})", "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                         {
                             currentS32Data.Layer4.Remove(objToDelete);
+                            Layer4Index_Remove(currentS32Data, objToDelete);
 
                             isS32Modified = true;
                             RenderS32Map();
@@ -10682,12 +10727,13 @@ namespace L1FlyMapViewer
             int deletedCount = 0;
             foreach (var s32Data in _document.S32Files.Values)
             {
-                int beforeCount = s32Data.Layer4.Count;
-                s32Data.Layer4.RemoveAll(o => o.TileId == tileId);
-                int removed = beforeCount - s32Data.Layer4.Count;
-                if (removed > 0)
+                // 先收集要刪除的物件以更新空間索引
+                var toRemove = s32Data.Layer4.Where(o => o.TileId == tileId).ToList();
+                if (toRemove.Count > 0)
                 {
-                    deletedCount += removed;
+                    s32Data.Layer4.RemoveAll(o => o.TileId == tileId);
+                    Layer4Index_RemoveRange(s32Data, toRemove);
+                    deletedCount += toRemove.Count;
                     s32Data.IsModified = true;
                 }
             }
@@ -11224,6 +11270,7 @@ namespace L1FlyMapViewer
                             "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                         {
                             currentS32Data.Layer4.Remove(objToDelete);
+                            Layer4Index_Remove(currentS32Data, objToDelete);
 
                             isS32Modified = true;
                             RenderS32Map();
@@ -13128,6 +13175,7 @@ namespace L1FlyMapViewer
                 });
 
                 s32Data.Layer4.Remove(obj);
+                Layer4Index_Remove(s32Data, obj);
                 s32Data.IsModified = true;
                 deletedCount++;
             }
@@ -13213,6 +13261,7 @@ namespace L1FlyMapViewer
                 // 刪除物件
                 if (s32Data.Layer4.Remove(obj))
                 {
+                    Layer4Index_Remove(s32Data, obj);
                     deletedCount++;
                     s32Data.IsModified = true;
                 }
@@ -13921,6 +13970,7 @@ namespace L1FlyMapViewer
 
                         // 從 Layer4 移除
                         s32.Layer4.Remove(obj);
+                        Layer4Index_Remove(s32, obj);
                         s32.IsModified = true;
                         deletedCount++;
                     }
@@ -14569,16 +14619,24 @@ namespace L1FlyMapViewer
                         int segStartX = s32Data.SegInfo.nLinBeginX;
                         int segStartY = s32Data.SegInfo.nLinBeginY;
 
-                        int removedCount = s32Data.Layer4.RemoveAll(obj =>
+                        // 先收集要刪除的物件以更新空間索引
+                        var toRemove = s32Data.Layer4.Where(obj =>
                         {
                             int objGlobalX = segStartX + obj.X / 2;
                             int objGlobalY = segStartY + obj.Y;
                             return selectedGlobalCells.Contains((objGlobalX, objGlobalY));
-                        });
+                        }).ToList();
 
-                        if (removedCount > 0)
+                        if (toRemove.Count > 0)
                         {
-                            totalL4 += removedCount;
+                            s32Data.Layer4.RemoveAll(obj =>
+                            {
+                                int objGlobalX = segStartX + obj.X / 2;
+                                int objGlobalY = segStartY + obj.Y;
+                                return selectedGlobalCells.Contains((objGlobalX, objGlobalY));
+                            });
+                            Layer4Index_RemoveRange(s32Data, toRemove);
+                            totalL4 += toRemove.Count;
                             modifiedS32s.Add(s32Data);
                         }
                     }
@@ -14776,9 +14834,15 @@ namespace L1FlyMapViewer
                 // 清除第4層
                 if (chkL4.Checked)
                 {
-                    int removedCount = targetS32.Layer4.RemoveAll(obj =>
-                        obj.X / 2 == layer3X && obj.Y == localY);
-                    if (removedCount > 0) clearedLayers.Add($"L4({removedCount})");
+                    var toRemove = targetS32.Layer4.Where(obj =>
+                        obj.X / 2 == layer3X && obj.Y == localY).ToList();
+                    if (toRemove.Count > 0)
+                    {
+                        targetS32.Layer4.RemoveAll(obj =>
+                            obj.X / 2 == layer3X && obj.Y == localY);
+                        Layer4Index_RemoveRange(targetS32, toRemove);
+                        clearedLayers.Add($"L4({toRemove.Count})");
+                    }
                 }
 
                 // 清除第5層
@@ -16667,6 +16731,7 @@ namespace L1FlyMapViewer
 
                         // 加入 S32 資料
                         s32Data.Layer4.Add(newItem);
+                        Layer4Index_Add(s32Data, newItem);
                         s32Data.IsModified = true;
 
                         // 更新 ListView
@@ -16774,6 +16839,7 @@ namespace L1FlyMapViewer
                             if (s32Data.Layer4.Remove(item))
                                 removedCount++;
                         }
+                        Layer4Index_RemoveRange(s32Data, kvp.Value);
                         s32Data.IsModified = true;
                     }
                 }
@@ -16807,6 +16873,8 @@ namespace L1FlyMapViewer
                 {
                     if (_document.S32Files.TryGetValue(filePath, out S32Data s32Data))
                     {
+                        // 先更新空間索引（需要在 Clear 之前）
+                        Layer4Index_RemoveRange(s32Data, s32Data.Layer4);
                         removedCount += s32Data.Layer4.Count;
                         s32Data.Layer4.Clear();
                         s32Data.IsModified = true;
@@ -17665,7 +17733,7 @@ namespace L1FlyMapViewer
                             else if (tile.Layer == "Layer4")
                             {
                                 var obj = s32Data.Layer4.FirstOrDefault(o => o.X == tile.X && o.Y == tile.Y && o.TileId == tile.TileId && o.IndexId == tile.IndexId);
-                                if (obj != null) { s32Data.Layer4.Remove(obj); deletedCount++; }
+                                if (obj != null) { s32Data.Layer4.Remove(obj); Layer4Index_Remove(s32Data, obj); deletedCount++; }
                             }
                             s32Data.IsModified = true;
                         }
@@ -17700,7 +17768,7 @@ namespace L1FlyMapViewer
                             else if (tile.Layer == "Layer4")
                             {
                                 var obj = s32Data.Layer4.FirstOrDefault(o => o.X == tile.X && o.Y == tile.Y && o.TileId == tile.TileId && o.IndexId == tile.IndexId);
-                                if (obj != null) { s32Data.Layer4.Remove(obj); deletedCount++; }
+                                if (obj != null) { s32Data.Layer4.Remove(obj); Layer4Index_Remove(s32Data, obj); deletedCount++; }
                             }
                             s32Data.IsModified = true;
                         }
