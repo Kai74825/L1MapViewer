@@ -13131,6 +13131,20 @@ namespace L1FlyMapViewer
         // 開始素材貼上預覽模式
         private void StartMaterialPasteMode(Fs3pData material, string filePath)
         {
+            // 處理素材中的 Tiles - 檢查 MD5 並匯入
+            if (material.Tiles != null && material.Tiles.Count > 0)
+            {
+                var mappingResult = ProcessMaterialTiles(material);
+                if (mappingResult == null)
+                {
+                    // 使用者取消
+                    return;
+                }
+
+                // 根據 mapping 更新素材中的 TileId
+                ApplyTileMappingToMaterial(material, mappingResult);
+            }
+
             _pendingMaterial = material;
             _pendingMaterialPath = filePath;
 
@@ -13140,6 +13154,225 @@ namespace L1FlyMapViewer
             // 更新素材列表並高亮選中項目
             RefreshMaterialsList();
             HighlightPendingMaterial();
+        }
+
+        // 處理素材中的 Tiles - 檢查 MD5 並決定是否需要匯入
+        private TileMappingResult ProcessMaterialTiles(Fs3pData material)
+        {
+            // 先進行預覽分析 - 不實際匯入
+            var previewResult = PreviewTileImport(material.Tiles);
+
+            // 如果所有 tiles 都可以重用（MD5 一致），直接返回
+            if (previewResult.NeedImportCount == 0 && previewResult.NeedRemapCount == 0)
+            {
+                // 靜默處理，直接使用 TileImportManager 建立 mapping（不會實際寫入）
+                var importer = new TileImportManager { StartSearchId = 10000 };
+                return BuildMappingWithoutImport(material.Tiles);
+            }
+
+            // 需要匯入新 tiles，顯示對話框讓使用者確認
+            string message = $"素材包含 {material.Tiles.Count} 個圖塊：\n\n" +
+                             $"• 可重用 (MD5 相符): {previewResult.ReuseCount} 個\n" +
+                             $"• 需重新編號 (ID 衝突): {previewResult.NeedRemapCount} 個\n" +
+                             $"• 需新增匯入: {previewResult.NeedImportCount} 個\n\n" +
+                             $"請輸入新圖塊的起始編號 (將從此編號開始尋找未使用的 ID)：";
+
+            using (var dialog = new Form())
+            {
+                dialog.Text = "圖塊匯入設定";
+                dialog.Size = new Size(420, 220);
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+
+                var lblMessage = new Label
+                {
+                    Text = message,
+                    Location = new Point(15, 15),
+                    Size = new Size(380, 100),
+                    AutoSize = false
+                };
+                dialog.Controls.Add(lblMessage);
+
+                var lblStartId = new Label
+                {
+                    Text = "起始編號：",
+                    Location = new Point(15, 125),
+                    AutoSize = true
+                };
+                dialog.Controls.Add(lblStartId);
+
+                var txtStartId = new TextBox
+                {
+                    Text = "10000",
+                    Location = new Point(90, 122),
+                    Size = new Size(100, 23)
+                };
+                dialog.Controls.Add(txtStartId);
+
+                var btnOK = new Button
+                {
+                    Text = "確定匯入",
+                    DialogResult = DialogResult.OK,
+                    Location = new Point(220, 145),
+                    Size = new Size(85, 28)
+                };
+                dialog.Controls.Add(btnOK);
+
+                var btnCancel = new Button
+                {
+                    Text = "取消",
+                    DialogResult = DialogResult.Cancel,
+                    Location = new Point(310, 145),
+                    Size = new Size(85, 28)
+                };
+                dialog.Controls.Add(btnCancel);
+
+                dialog.AcceptButton = btnOK;
+                dialog.CancelButton = btnCancel;
+
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return null;
+
+                if (!int.TryParse(txtStartId.Text, out int startId) || startId < 1)
+                {
+                    MessageBox.Show("請輸入有效的起始編號 (大於 0)", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+
+                // 再次確認
+                int totalNewTiles = previewResult.NeedRemapCount + previewResult.NeedImportCount;
+                string confirmMessage = $"即將執行以下操作：\n\n" +
+                                        $"• 重用現有圖塊: {previewResult.ReuseCount} 個\n" +
+                                        $"• 匯入新圖塊: {totalNewTiles} 個\n" +
+                                        $"  (從編號 {startId} 開始尋找未使用的 ID)\n\n" +
+                                        $"確定要繼續嗎？";
+
+                if (MessageBox.Show(confirmMessage, "確認匯入", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                    return null;
+
+                // 執行實際匯入
+                var importer = new TileImportManager { StartSearchId = startId };
+                var result = importer.ProcessTilesBatch(material.Tiles);
+
+                // 顯示匯入結果
+                if (result.ImportedCount > 0 || result.RemappedCount > 0)
+                {
+                    toolStripStatusLabel1.Text = $"已匯入 {result.ImportedCount} 個新圖塊，重新編號 {result.RemappedCount} 個，重用 {result.ReuseCount} 個";
+                }
+
+                return result;
+            }
+        }
+
+        // 預覽 Tile 匯入情況（不實際寫入）
+        private (int ReuseCount, int NeedRemapCount, int NeedImportCount) PreviewTileImport(Dictionary<int, TilePackageData> tiles)
+        {
+            int reuseCount = 0;
+            int needRemapCount = 0;
+            int needImportCount = 0;
+
+            foreach (var kvp in tiles)
+            {
+                int originalId = kvp.Key;
+                byte[] packageMd5 = kvp.Value.Md5Hash;
+
+                // 檢查現有 Tile
+                byte[] existingTilData = L1PakReader.UnPack("Tile", $"{originalId}.til");
+
+                if (existingTilData != null)
+                {
+                    byte[] existingMd5 = TileHashManager.CalculateMd5(existingTilData);
+                    if (TileHashManager.CompareMd5(existingMd5, packageMd5))
+                    {
+                        reuseCount++; // MD5 一致，可重用
+                    }
+                    else
+                    {
+                        needRemapCount++; // ID 存在但 MD5 不同，需重新編號
+                    }
+                }
+                else
+                {
+                    // ID 不存在，檢查是否有相同 MD5 的其他 tile
+                    int? existingIdByMd5 = TileHashManager.FindTileByMd5(packageMd5);
+                    if (existingIdByMd5.HasValue)
+                    {
+                        reuseCount++; // 找到相同 MD5，可重用
+                    }
+                    else
+                    {
+                        needImportCount++; // 完全不存在，需新增
+                    }
+                }
+            }
+
+            return (reuseCount, needRemapCount, needImportCount);
+        }
+
+        // 建立 Tile Mapping（不實際匯入，用於所有 tile 都可重用的情況）
+        private TileMappingResult BuildMappingWithoutImport(Dictionary<int, TilePackageData> tiles)
+        {
+            var result = new TileMappingResult();
+
+            foreach (var kvp in tiles)
+            {
+                int originalId = kvp.Key;
+                byte[] packageMd5 = kvp.Value.Md5Hash;
+
+                byte[] existingTilData = L1PakReader.UnPack("Tile", $"{originalId}.til");
+
+                if (existingTilData != null)
+                {
+                    byte[] existingMd5 = TileHashManager.CalculateMd5(existingTilData);
+                    if (TileHashManager.CompareMd5(existingMd5, packageMd5))
+                    {
+                        result.AddMapping(originalId, originalId, TileMatchType.Exact);
+                    }
+                }
+                else
+                {
+                    int? existingIdByMd5 = TileHashManager.FindTileByMd5(packageMd5);
+                    if (existingIdByMd5.HasValue)
+                    {
+                        result.AddMapping(originalId, existingIdByMd5.Value, TileMatchType.MergedByMd5);
+                    }
+                }
+            }
+
+            return result;
+        }
+
+        // 將 Tile Mapping 套用到素材的各圖層
+        private void ApplyTileMappingToMaterial(Fs3pData material, TileMappingResult mapping)
+        {
+            // 更新 Layer1
+            foreach (var item in material.Layer1Items)
+            {
+                if (item.TileId > 0)
+                {
+                    item.TileId = (ushort)mapping.GetNewTileId(item.TileId);
+                }
+            }
+
+            // 更新 Layer2
+            foreach (var item in material.Layer2Items)
+            {
+                if (item.TileId > 0)
+                {
+                    item.TileId = (ushort)mapping.GetNewTileId(item.TileId);
+                }
+            }
+
+            // 更新 Layer4
+            foreach (var item in material.Layer4Items)
+            {
+                if (item.TileId > 0)
+                {
+                    item.TileId = (ushort)mapping.GetNewTileId(item.TileId);
+                }
+            }
         }
 
         // 取消素材貼上模式
