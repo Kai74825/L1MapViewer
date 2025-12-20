@@ -97,6 +97,8 @@ namespace L1MapViewer.CLI
                         return Commands.BenchmarkCommands.SpatialIndex(cmdArgs);
                     case "benchmark-thumbnails":
                         return Commands.BenchmarkCommands.Thumbnails(cmdArgs);
+                    case "render-adjacent":
+                        return Commands.BenchmarkCommands.RenderAdjacent(cmdArgs);
                     case "help":
                     case "-h":
                     case "--help":
