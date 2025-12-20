@@ -1,3 +1,5 @@
+using System.Text;
+using L1FlyMapViewer;
 using L1MapViewer;
 
 namespace L1MapViewerCore;
@@ -16,6 +18,6 @@ static class Program
         // To customize application configuration such as set high DPI settings or default font,
         // see https://aka.ms/applicationconfiguration.
         ApplicationConfiguration.Initialize();
-        Application.Run(new Form1());
+        Application.Run(new MapForm());
     }
 }

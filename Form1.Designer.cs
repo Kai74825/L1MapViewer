@@ -10,10 +10,10 @@ namespace L1FlyMapViewer
         private IContainer components;
         private MenuStrip menuStrip1;
         private ToolStripMenuItem openToolStripMenuItem;
-        private ToolStripMenuItem changeFolderToolStripMenuItem;
         private ToolStripMenuItem databaseToolStripMenuItem;
+        private ToolStripMenuItem mapEditorToolStripMenuItem;
         private StatusStrip statusStrip1;
-        private ToolStripStatusLabel toolStripStatusLabel1;
+        public ToolStripStatusLabel toolStripStatusLabel1;
         public ToolStripProgressBar toolStripProgressBar1;
         public ToolStripStatusLabel toolStripStatusLabel2;
         public ToolStripStatusLabel toolStripStatusLabel3;
@@ -97,8 +97,8 @@ namespace L1FlyMapViewer
             // MenuStrip
             this.menuStrip1 = new MenuStrip();
             this.openToolStripMenuItem = new ToolStripMenuItem();
-            this.changeFolderToolStripMenuItem = new ToolStripMenuItem();
             this.databaseToolStripMenuItem = new ToolStripMenuItem();
+            this.mapEditorToolStripMenuItem = new ToolStripMenuItem();
 
             // StatusStrip
             this.statusStrip1 = new StatusStrip();
@@ -192,8 +192,8 @@ namespace L1FlyMapViewer
             //
             this.menuStrip1.Items.AddRange(new ToolStripItem[] {
                 this.openToolStripMenuItem,
-                this.changeFolderToolStripMenuItem,
-                this.databaseToolStripMenuItem
+                this.databaseToolStripMenuItem,
+                this.mapEditorToolStripMenuItem
             });
             this.menuStrip1.Location = new Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
@@ -204,17 +204,9 @@ namespace L1FlyMapViewer
             // openToolStripMenuItem
             //
             this.openToolStripMenuItem.Name = "openToolStripMenuItem";
-            this.openToolStripMenuItem.Size = new Size(51, 20);
-            this.openToolStripMenuItem.Text = "Open";
+            this.openToolStripMenuItem.Size = new Size(164, 20);
+            this.openToolStripMenuItem.Text = "開啟天堂客戶端讀取地圖";
             this.openToolStripMenuItem.Click += new System.EventHandler(this.openToolStripMenuItem_Click);
-
-            //
-            // changeFolderToolStripMenuItem
-            //
-            this.changeFolderToolStripMenuItem.Name = "changeFolderToolStripMenuItem";
-            this.changeFolderToolStripMenuItem.Size = new Size(88, 20);
-            this.changeFolderToolStripMenuItem.Text = "变更资料夹";
-            this.changeFolderToolStripMenuItem.Click += new System.EventHandler(this.changeFolder_Click);
 
             //
             // databaseToolStripMenuItem
@@ -223,6 +215,14 @@ namespace L1FlyMapViewer
             this.databaseToolStripMenuItem.Size = new Size(88, 20);
             this.databaseToolStripMenuItem.Text = "資料庫設定";
             this.databaseToolStripMenuItem.Click += new System.EventHandler(this.databaseToolStripMenuItem_Click);
+
+            //
+            // mapEditorToolStripMenuItem
+            //
+            this.mapEditorToolStripMenuItem.Name = "mapEditorToolStripMenuItem";
+            this.mapEditorToolStripMenuItem.Size = new Size(88, 20);
+            this.mapEditorToolStripMenuItem.Text = "地圖編輯器";
+            this.mapEditorToolStripMenuItem.Click += new System.EventHandler(this.mapEditorToolStripMenuItem_Click);
 
             //
             // statusStrip1
@@ -990,7 +990,7 @@ namespace L1FlyMapViewer
             this.Controls.Add(this.menuStrip1);
             this.MainMenuStrip = this.menuStrip1;
             this.Name = "Form1";
-            this.Text = "L1MapViewer - 地图分析工具";
+            this.Text = "L1MapMonster - 地圖怪物設定工具";
             this.menuStrip1.ResumeLayout(false);
             this.menuStrip1.PerformLayout();
             this.statusStrip1.ResumeLayout(false);
