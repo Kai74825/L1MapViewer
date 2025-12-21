@@ -119,6 +119,7 @@ namespace L1FlyMapViewer
         private Button btnCopySettings;
         private Button btnRegionEdit;
         private Button btnCopyMapCoords;
+        private Button btnImportFs32;
         private Button btnSetPassable;
         private Button btnSetImpassable;
         private Button btnEditLayer5;
@@ -239,6 +240,7 @@ namespace L1FlyMapViewer
             this.chkShowRegions = new CheckBox();
             this.btnCopySettings = new Button();
             this.btnCopyMapCoords = new Button();
+            this.btnImportFs32 = new Button();
             this.btnRegionEdit = new Button();
             this.btnSetPassable = new Button();
             this.btnSetImpassable = new Button();
@@ -688,6 +690,7 @@ namespace L1FlyMapViewer
             this.s32LayerControlPanel.BorderStyle = BorderStyle.FixedSingle;
             this.s32LayerControlPanel.Controls.Add(this.btnCopySettings);
             this.s32LayerControlPanel.Controls.Add(this.btnCopyMapCoords);
+            this.s32LayerControlPanel.Controls.Add(this.btnImportFs32);
             this.s32LayerControlPanel.Controls.Add(this.btnSetPassable);
             this.s32LayerControlPanel.Controls.Add(this.btnSetImpassable);
             this.s32LayerControlPanel.Controls.Add(this.btnEditLayer5);
@@ -831,6 +834,17 @@ namespace L1FlyMapViewer
             this.btnCopyMapCoords.Text = "複製座標";
             this.btnCopyMapCoords.UseVisualStyleBackColor = true;
             this.btnCopyMapCoords.Click += new System.EventHandler(this.btnCopyMapCoords_Click);
+
+            //
+            // btnImportFs32
+            //
+            this.btnImportFs32.Location = new Point(395, 5);
+            this.btnImportFs32.Name = "btnImportFs32";
+            this.btnImportFs32.Size = new Size(90, 25);
+            this.btnImportFs32.TabIndex = 16;
+            this.btnImportFs32.Text = "匯入地圖包";
+            this.btnImportFs32.UseVisualStyleBackColor = true;
+            this.btnImportFs32.Click += new System.EventHandler(this.btnImportFs32_Click);
 
             //
             // btnSetPassable

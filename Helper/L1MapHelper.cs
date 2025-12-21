@@ -184,6 +184,111 @@ namespace L1MapViewer.Helper {
             return Share.MapDataList;
         }
 
+        /// <summary>
+        /// 重新整理單一地圖的檔案清單（用於匯入新 S32 後更新）
+        /// </summary>
+        public static void RefreshMap(string mapId) {
+            if (string.IsNullOrEmpty(mapId) || string.IsNullOrEmpty(Share.LineagePath))
+                return;
+
+            string mapFolderPath = Path.Combine(Share.LineagePath, "map", mapId);
+            if (!Directory.Exists(mapFolderPath))
+                return;
+
+            // 移除舊資料
+            if (Share.MapDataList.ContainsKey(mapId)) {
+                Share.MapDataList.Remove(mapId);
+            }
+
+            // 重新讀取該地圖
+            DirectoryInfo di = new DirectoryInfo(mapFolderPath);
+            L1Map pMap = new L1Map(di.Name, di.FullName);
+            pMap.szName = getDescribe(di.Name);
+
+            // 收集所有有效的 seg 和 s32 檔案
+            var filesByName = new Dictionary<string, (FileInfo s32File, FileInfo segFile)>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (FileInfo file in di.GetFiles()) {
+                string szExt = Path.GetExtension(file.FullName).ToLower();
+                string szFileName = Path.GetFileNameWithoutExtension(file.FullName).ToLower();
+
+                if (!szExt.Equals(".seg") && !szExt.Equals(".s32"))
+                    continue;
+                if (!Regex.IsMatch(szFileName, "^[a-fA-F0-9]+$"))
+                    continue;
+
+                if (!filesByName.ContainsKey(szFileName)) {
+                    filesByName[szFileName] = (null, null);
+                }
+
+                var entry = filesByName[szFileName];
+                if (szExt.Equals(".s32")) {
+                    filesByName[szFileName] = (file, entry.segFile);
+                } else {
+                    filesByName[szFileName] = (entry.s32File, file);
+                }
+            }
+
+            // 處理每個檔名：s32 優先
+            foreach (var kvp in filesByName) {
+                string szFileName = kvp.Key;
+                var (s32File, segFile) = kvp.Value;
+
+                FileInfo fileToUse = null;
+                bool isS32 = false;
+
+                if (s32File != null) {
+                    fileToUse = s32File;
+                    isS32 = true;
+                } else if (segFile != null && !isRemastered) {
+                    fileToUse = segFile;
+                    isS32 = false;
+                }
+
+                if (fileToUse == null)
+                    continue;
+
+                int nBlockX = Convert.ToInt32(szFileName.Substring(0, 4), 16);
+                int nBlockY = Convert.ToInt32(szFileName.Substring(4, 4), 16);
+
+                pMap.nMinBlockX = Math.Min(pMap.nMinBlockX, nBlockX);
+                pMap.nMinBlockY = Math.Min(pMap.nMinBlockY, nBlockY);
+                pMap.nMaxBlockX = Math.Max(pMap.nMaxBlockX, nBlockX);
+                pMap.nMaxBlockY = Math.Max(pMap.nMaxBlockY, nBlockY);
+
+                L1MapSeg pMapSeg = new L1MapSeg(nBlockX, nBlockY, isS32);
+                pMap.FullFileNameList.Add(fileToUse.FullName, pMapSeg);
+            }
+
+            // 計算邊界
+            pMap.nBlockCountX = pMap.nMaxBlockX - pMap.nMinBlockX + 1;
+            pMap.nBlockCountY = pMap.nMaxBlockY - pMap.nMinBlockY + 1;
+
+            if (pMap.nBlockCountX < 0 || pMap.nBlockCountY < 0) {
+                Console.WriteLine($"RefreshMap: map {mapId} 發生錯誤");
+                return;
+            }
+
+            pMap.nLinLengthX = pMap.nBlockCountX * 64;
+            pMap.nLinLengthY = pMap.nBlockCountY * 64;
+            pMap.nLinEndX = (pMap.nMaxBlockX - 0x7FFF) * 64 + 0x7FFF;
+            pMap.nLinEndY = (pMap.nMaxBlockY - 0x7FFF) * 64 + 0x7FFF;
+            pMap.nLinBeginX = pMap.nLinEndX - pMap.nLinLengthX + 1;
+            pMap.nLinBeginY = pMap.nLinEndY - pMap.nLinLengthY + 1;
+
+            Share.MapDataList[mapId] = pMap;
+
+            // 填入共用值
+            foreach (L1MapSeg pMapSeg in pMap.FullFileNameList.Values) {
+                pMapSeg.isRemastered = isRemastered;
+                pMapSeg.nMapMinBlockX = pMap.nMinBlockX;
+                pMapSeg.nMapMinBlockY = pMap.nMinBlockY;
+                pMapSeg.nMapBlockCountX = pMap.nBlockCountX;
+            }
+
+            Console.WriteLine($"[RefreshMap] Map {mapId} refreshed: {pMap.FullFileNameList.Count} files");
+        }
+
 
 
         //zone3desc-c.tbl -->地圖區塊代號的中文翻譯

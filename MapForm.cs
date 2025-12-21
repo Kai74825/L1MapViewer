@@ -4438,11 +4438,45 @@ namespace L1FlyMapViewer
                     int skippedCount = 0;
                     var errors = new List<string>();
 
+                    // 取得 MapInfo（可能為 null，需要從現有 S32 推算）
+                    int mapMinBlockX = 0x7FFF;
+                    int mapMinBlockY = 0x7FFF;
+                    int mapBlockCountX = 1;
+
+                    if (_document.MapInfo != null)
+                    {
+                        mapMinBlockX = _document.MapInfo.nMinBlockX;
+                        mapMinBlockY = _document.MapInfo.nMinBlockY;
+                        mapBlockCountX = _document.MapInfo.nBlockCountX;
+                    }
+                    else if (_document.S32Files.Count > 0)
+                    {
+                        // 從現有 S32 推算
+                        var firstS32 = _document.S32Files.Values.First();
+                        if (firstS32.SegInfo != null)
+                        {
+                            mapMinBlockX = firstS32.SegInfo.nMapMinBlockX;
+                            mapMinBlockY = firstS32.SegInfo.nMapMinBlockY;
+                            mapBlockCountX = firstS32.SegInfo.nMapBlockCountX;
+                        }
+                    }
+
+                    Console.WriteLine($"[ImportFs32] MapInfo: MinBlockX={mapMinBlockX:X4}, MinBlockY={mapMinBlockY:X4}, BlockCountX={mapBlockCountX}");
+
                     foreach (var block in fs32.Blocks)
                     {
                         try
                         {
+                            Console.WriteLine($"[ImportFs32] Processing block {block.BlockX:X4}{block.BlockY:X4}, data size={block.S32Data?.Length ?? 0}");
+
                             // 解析 S32 資料
+                            if (block.S32Data == null || block.S32Data.Length == 0)
+                            {
+                                errors.Add($"區塊 {block.BlockX:X4}{block.BlockY:X4}: 資料為空");
+                                skippedCount++;
+                                continue;
+                            }
+
                             var s32Data = S32Parser.Parse(block.S32Data);
                             if (s32Data == null)
                             {
@@ -4451,11 +4485,13 @@ namespace L1FlyMapViewer
                                 continue;
                             }
 
+                            Console.WriteLine($"[ImportFs32] Parsed OK: Layer1={s32Data.Layer1 != null}, Layer2={s32Data.Layer2?.Count ?? 0}, Layer4={s32Data.Layer4?.Count ?? 0}");
+
                             // 設置 SegInfo
                             var segInfo = new Struct.L1MapSeg(block.BlockX, block.BlockY, true);
-                            segInfo.nMapMinBlockX = _document.MapInfo.nMinBlockX;
-                            segInfo.nMapMinBlockY = _document.MapInfo.nMinBlockY;
-                            segInfo.nMapBlockCountX = _document.MapInfo.nBlockCountX;
+                            segInfo.nMapMinBlockX = mapMinBlockX;
+                            segInfo.nMapMinBlockY = mapMinBlockY;
+                            segInfo.nMapBlockCountX = mapBlockCountX;
                             s32Data.SegInfo = segInfo;
 
                             // 如果有 Tile Mapping，套用到 S32
@@ -4468,11 +4504,14 @@ namespace L1FlyMapViewer
                             string s32FileName = $"{block.BlockX:x4}{block.BlockY:x4}.s32";
                             string s32FilePath = Path.Combine(mapPath, s32FileName);
 
+                            Console.WriteLine($"[ImportFs32] Writing to {s32FilePath}");
                             S32Writer.Write(s32Data, s32FilePath);
                             importedCount++;
+                            Console.WriteLine($"[ImportFs32] Block {block.BlockX:X4}{block.BlockY:X4} done");
                         }
                         catch (Exception ex)
                         {
+                            Console.WriteLine($"[ImportFs32] Error in block {block.BlockX:X4}{block.BlockY:X4}: {ex}");
                             errors.Add($"區塊 {block.BlockX:X4}{block.BlockY:X4}: {ex.Message}");
                             skippedCount++;
                         }
@@ -4500,7 +4539,7 @@ namespace L1FlyMapViewer
 
                     MessageBox.Show(resultMessage, "匯入完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
 
-                    // 6. 重新載入地圖
+                    // 6. 重新載入 S32 檔案清單
                     toolStripStatusLabel1.Text = "正在重新載入地圖...";
                     Application.DoEvents();
 
@@ -4508,8 +4547,13 @@ namespace L1FlyMapViewer
                     int scrollX = _viewState.ScrollX;
                     int scrollY = _viewState.ScrollY;
 
-                    // 重新載入
-                    LoadMap(mapPath);
+                    // 先重新整理 Share.MapDataList 中的地圖資料（更新檔案清單）
+                    Console.WriteLine($"[ImportFs32] Refreshing map data for: {_document.MapId}");
+                    L1MapHelper.RefreshMap(_document.MapId);
+
+                    // 重新載入 S32 檔案清單
+                    Console.WriteLine($"[ImportFs32] Reloading S32 file list for map: {_document.MapId}");
+                    LoadS32FileList(_document.MapId);
 
                     // 恢復滾動位置
                     _viewState.SetScrollSilent(scrollX, scrollY);
@@ -5301,6 +5345,12 @@ namespace L1FlyMapViewer
             Clipboard.SetText(coordText);
 
             this.toolStripStatusLabel1.Text = $"已複製: {coordText}";
+        }
+
+        // 匯入地圖包按鈕點擊事件
+        private void btnImportFs32_Click(object sender, EventArgs e)
+        {
+            ImportFs32ToCurrentMap();
         }
 
         // 允許通行按鈕點擊事件
@@ -11217,12 +11267,31 @@ namespace L1FlyMapViewer
             if (tileInfo == null)
                 return;
 
-            // 計算使用此 TileId 的 Layer4 物件數量
+            // 計算使用此 TileId 的各圖層數量
+            int layer1Count = 0;
+            int layer2Count = 0;
             int layer4Count = 0;
             foreach (var s32Data in _document.S32Files.Values)
             {
+                // Layer1
+                if (s32Data.Layer1 != null)
+                {
+                    for (int y = 0; y < 64; y++)
+                    {
+                        for (int x = 0; x < 128; x++)
+                        {
+                            var cell = s32Data.Layer1[y, x];
+                            if (cell != null && cell.TileId == tileInfo.TileId)
+                                layer1Count++;
+                        }
+                    }
+                }
+                // Layer2
+                layer2Count += s32Data.Layer2.Count(o => o.TileId == tileInfo.TileId);
+                // Layer4
                 layer4Count += s32Data.Layer4.Count(o => o.TileId == tileInfo.TileId);
             }
+            int totalCount = layer1Count + layer2Count + layer4Count;
 
             // 建立右鍵選單
             ContextMenuStrip menu = new ContextMenuStrip();
@@ -11233,6 +11302,14 @@ namespace L1FlyMapViewer
             deleteLayer4Item.Click += (s, ev) =>
             {
                 DeleteAllLayer4ByTileId(tileInfo.TileId);
+            };
+
+            // 刪除所有使用此 TileId 的引用（Layer1 + Layer2 + Layer4）
+            ToolStripMenuItem deleteAllItem = new ToolStripMenuItem($"刪除所有引用 (L1:{layer1Count} L2:{layer2Count} L4:{layer4Count})");
+            deleteAllItem.Enabled = totalCount > 0;
+            deleteAllItem.Click += (s, ev) =>
+            {
+                DeleteAllReferencesByTileId(tileInfo.TileId, layer1Count, layer2Count, layer4Count);
             };
 
             // 查看 Tile 詳細資訊
@@ -11290,6 +11367,7 @@ namespace L1FlyMapViewer
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(renumberItem);
             menu.Items.Add(deleteLayer4Item);
+            menu.Items.Add(deleteAllItem);
             menu.Items.Add(new ToolStripSeparator());
             menu.Items.Add(exportSelectedItem);
             menu.Items.Add(exportAllItem);
@@ -11800,6 +11878,93 @@ namespace L1FlyMapViewer
             UpdateTileList(txtTileSearch.Text);  // 同步執行，但群組縮圖已在背景處理
 
             this.toolStripStatusLabel1.Text = $"已刪除 TileId {tileId} 的所有 Layer4 物件，共 {deletedCount} 個";
+        }
+
+        // 刪除所有使用指定 TileId 的引用（Layer1 + Layer2 + Layer4）
+        private void DeleteAllReferencesByTileId(int tileId, int layer1Count, int layer2Count, int layer4Count)
+        {
+            int totalCount = layer1Count + layer2Count + layer4Count;
+            if (totalCount == 0)
+            {
+                MessageBox.Show($"沒有找到使用 TileId {tileId} 的引用。", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // 確認刪除
+            DialogResult result = MessageBox.Show(
+                $"確定要刪除所有使用 TileId {tileId} 的引用嗎？\n\n" +
+                $"Layer1 地板: {layer1Count} 個\n" +
+                $"Layer2 裝飾: {layer2Count} 個\n" +
+                $"Layer4 物件: {layer4Count} 個\n\n" +
+                $"總計: {totalCount} 個",
+                "確認刪除",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Warning);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            // 執行刪除
+            int deletedL1 = 0;
+            int deletedL2 = 0;
+            int deletedL4 = 0;
+
+            foreach (var s32Data in _document.S32Files.Values)
+            {
+                bool modified = false;
+
+                // Layer1 - 將 TileId 設為 0
+                if (s32Data.Layer1 != null)
+                {
+                    for (int y = 0; y < 64; y++)
+                    {
+                        for (int x = 0; x < 128; x++)
+                        {
+                            var cell = s32Data.Layer1[y, x];
+                            if (cell != null && cell.TileId == tileId)
+                            {
+                                cell.TileId = 0;
+                                cell.IndexId = 0;
+                                deletedL1++;
+                                modified = true;
+                            }
+                        }
+                    }
+                }
+
+                // Layer2 - 移除物件
+                int l2Removed = s32Data.Layer2.RemoveAll(o => o.TileId == tileId);
+                if (l2Removed > 0)
+                {
+                    deletedL2 += l2Removed;
+                    modified = true;
+                }
+
+                // Layer4 - 移除物件並更新空間索引
+                var toRemove = s32Data.Layer4.Where(o => o.TileId == tileId).ToList();
+                if (toRemove.Count > 0)
+                {
+                    s32Data.Layer4.RemoveAll(o => o.TileId == tileId);
+                    Layer4Index_RemoveRange(s32Data, toRemove);
+                    deletedL4 += toRemove.Count;
+                    modified = true;
+                }
+
+                if (modified)
+                {
+                    s32Data.IsModified = true;
+                }
+            }
+
+            // 重新渲染
+            RenderS32Map();
+
+            // 更新 Tile 清單和群組縮圖
+            cachedAggregatedTiles.Clear();
+            UpdateGroupThumbnailsList();
+            UpdateTileList(txtTileSearch.Text);
+
+            this.toolStripStatusLabel1.Text = $"已刪除 TileId {tileId} 的所有引用 (L1:{deletedL1} L2:{deletedL2} L4:{deletedL4})";
         }
 
         // 在地圖上高亮顯示使用指定 TileId 的物件
