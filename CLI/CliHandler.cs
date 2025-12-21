@@ -113,6 +113,8 @@ namespace L1MapViewer.CLI
                         return CmdImportFs32(cmdArgs);
                     case "check-fs32":
                         return CmdCheckFs32(cmdArgs);
+                    case "extract-fs32-tile":
+                        return CmdExtractFs32Tile(cmdArgs);
                     case "help":
                     case "-h":
                     case "--help":
@@ -1376,6 +1378,102 @@ L1MapViewer CLI - S32 檔案解析工具
             Console.WriteLine($"耗時: {sw.ElapsedMilliseconds}ms");
 
             return (missingTiles.Count > 0 || invalidIndexes.Count > 0) ? 1 : 0;
+        }
+
+        /// <summary>
+        /// extract-fs32-tile 命令 - 從 fs32 提取特定 Tile
+        /// </summary>
+        private static int CmdExtractFs32Tile(string[] args)
+        {
+            if (args.Length < 2)
+            {
+                Console.WriteLine("用法: -cli extract-fs32-tile <fs32檔案> <tileId> [輸出資料夾]");
+                Console.WriteLine();
+                Console.WriteLine("從 fs32 檔案中提取特定的 Tile");
+                Console.WriteLine();
+                Console.WriteLine("參數:");
+                Console.WriteLine("  <fs32檔案>     要讀取的 fs32 檔案");
+                Console.WriteLine("  <tileId>       要提取的 TileId");
+                Console.WriteLine("  [輸出資料夾]   可選，預設為目前目錄");
+                Console.WriteLine();
+                Console.WriteLine("範例:");
+                Console.WriteLine("  extract-fs32-tile C:\\100002.fs32 10035");
+                Console.WriteLine("  extract-fs32-tile C:\\100002.fs32 10035 C:\\output");
+                return 1;
+            }
+
+            string fs32Path = args[0];
+            if (!int.TryParse(args[1], out int tileId))
+            {
+                Console.WriteLine($"無效的 TileId: {args[1]}");
+                return 1;
+            }
+            string outputFolder = args.Length >= 3 ? args[2] : Directory.GetCurrentDirectory();
+
+            if (!File.Exists(fs32Path))
+            {
+                Console.WriteLine($"錯誤: fs32 檔案不存在: {fs32Path}");
+                return 1;
+            }
+
+            Console.WriteLine("=== 提取 fs32 Tile ===");
+            Console.WriteLine($"fs32: {fs32Path}");
+            Console.WriteLine($"TileId: {tileId}");
+            Console.WriteLine($"輸出: {outputFolder}");
+            Console.WriteLine();
+
+            // 載入 fs32
+            var fs32 = Fs32Parser.ParseFile(fs32Path);
+            if (fs32 == null)
+            {
+                Console.WriteLine("錯誤: 無法解析 fs32 檔案");
+                return 1;
+            }
+
+            // 檢查 Tile 是否存在
+            if (!fs32.Tiles.TryGetValue(tileId, out var tileData))
+            {
+                Console.WriteLine($"錯誤: fs32 中不包含 TileId {tileId}");
+                Console.WriteLine($"可用的 TileId: {string.Join(", ", fs32.Tiles.Keys.OrderBy(k => k).Take(20))}...");
+                return 1;
+            }
+
+            byte[] tilData = tileData.TilData;
+            var version = L1Til.GetVersion(tilData);
+            int blockCount = tilData.Length >= 4 ? BitConverter.ToInt32(tilData, 0) : 0;
+
+            Console.WriteLine($"Tile 大小: {tilData.Length} bytes");
+            Console.WriteLine($"版本: {version}");
+            Console.WriteLine($"Block 數量: {blockCount}");
+            Console.WriteLine();
+
+            // 建立輸出資料夾
+            string tileOutputFolder = Path.Combine(outputFolder, $"fs32_tile_{tileId}");
+            Directory.CreateDirectory(tileOutputFolder);
+
+            // 輸出 .til 檔案
+            string tilOutputPath = Path.Combine(tileOutputFolder, $"{tileId}.til");
+            File.WriteAllBytes(tilOutputPath, tilData);
+            Console.WriteLine($"已輸出: {tilOutputPath}");
+
+            // 解析各個 block
+            var blocks = L1Til.Parse(tilData);
+            Console.WriteLine($"解析到 {blocks.Count} 個 block");
+
+            // 顯示每個 block 的資訊
+            Console.WriteLine();
+            Console.WriteLine("Block 資訊:");
+            for (int i = 0; i < Math.Min(blocks.Count, 10); i++)
+            {
+                var block = blocks[i];
+                byte type = block.Length > 0 ? block[0] : (byte)0;
+                Console.WriteLine($"  [{i:D3}] type={type}, size={block.Length} bytes");
+            }
+            if (blocks.Count > 10)
+            {
+                Console.WriteLine($"  ... 還有 {blocks.Count - 10} 個 block");
+            }
+            return 0;
         }
 
         /// <summary>
