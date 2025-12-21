@@ -4194,6 +4194,13 @@ namespace L1FlyMapViewer
                 menu.Items.Add(exportCheckedItem);
             }
 
+            menu.Items.Add(new ToolStripSeparator());
+
+            // 匯入 fs32 地圖包
+            ToolStripMenuItem importFs32Item = new ToolStripMenuItem("匯入 fs32 地圖包...");
+            importFs32Item.Click += (s, args) => ImportFs32ToCurrentMap();
+            menu.Items.Add(importFs32Item);
+
             menu.Show(lstS32Files, e.Location);
         }
 
@@ -4363,6 +4370,293 @@ namespace L1FlyMapViewer
                         Console.WriteLine($"[Export] Error: {ex}");
                         MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
+                }
+            }
+        }
+
+        // 匯入 fs32 地圖包到當前地圖
+        private void ImportFs32ToCurrentMap()
+        {
+            if (string.IsNullOrEmpty(_document.MapId))
+            {
+                MessageBox.Show("請先載入地圖", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            string mapPath = Path.Combine(Share.LineagePath, "Map", _document.MapId);
+
+            using (var openDialog = new OpenFileDialog())
+            {
+                openDialog.Filter = "FS32 地圖包|*.fs32|所有檔案|*.*";
+                openDialog.Title = "選擇要匯入的 fs32 地圖包";
+
+                if (openDialog.ShowDialog() != DialogResult.OK)
+                    return;
+
+                try
+                {
+                    // 1. 載入 fs32
+                    toolStripStatusLabel1.Text = "正在載入 fs32...";
+                    Application.DoEvents();
+
+                    var fs32 = Fs32Parser.ParseFile(openDialog.FileName);
+                    if (fs32 == null || fs32.Blocks.Count == 0)
+                    {
+                        MessageBox.Show("無效的 fs32 檔案或不包含任何區塊", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
+
+                    // 2. 顯示匯入資訊並確認
+                    string confirmMessage = $"fs32 地圖包資訊：\n\n" +
+                                             $"• 來源地圖: {fs32.SourceMapId}\n" +
+                                             $"• 區塊數量: {fs32.Blocks.Count}\n" +
+                                             $"• 圖塊數量: {fs32.Tiles.Count}\n\n" +
+                                             $"將匯入至當前地圖: {_document.MapId}\n\n" +
+                                             $"⚠️ 相同座標的區塊將被覆蓋！\n\n" +
+                                             $"確定要繼續嗎？";
+
+                    if (MessageBox.Show(confirmMessage, "確認匯入", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
+                        return;
+
+                    // 3. 處理 Tiles（如果有）
+                    TileMappingResult tileMapping = null;
+                    if (fs32.Tiles.Count > 0)
+                    {
+                        tileMapping = ProcessFs32Tiles(fs32);
+                        if (tileMapping == null)
+                        {
+                            // 用戶取消
+                            return;
+                        }
+                    }
+
+                    // 4. 解析並寫入 S32 區塊
+                    toolStripStatusLabel1.Text = "正在匯入區塊...";
+                    Application.DoEvents();
+
+                    int importedCount = 0;
+                    int skippedCount = 0;
+                    var errors = new List<string>();
+
+                    foreach (var block in fs32.Blocks)
+                    {
+                        try
+                        {
+                            // 解析 S32 資料
+                            var s32Data = S32Parser.Parse(block.S32Data);
+                            if (s32Data == null)
+                            {
+                                errors.Add($"區塊 {block.BlockX:X4}{block.BlockY:X4}: 解析失敗");
+                                skippedCount++;
+                                continue;
+                            }
+
+                            // 設置 SegInfo
+                            var segInfo = new Struct.L1MapSeg(block.BlockX, block.BlockY, true);
+                            segInfo.nMapMinBlockX = _document.MapInfo.nMinBlockX;
+                            segInfo.nMapMinBlockY = _document.MapInfo.nMinBlockY;
+                            segInfo.nMapBlockCountX = _document.MapInfo.nBlockCountX;
+                            s32Data.SegInfo = segInfo;
+
+                            // 如果有 Tile Mapping，套用到 S32
+                            if (tileMapping != null && tileMapping.IdMapping.Count > 0)
+                            {
+                                ApplyTileMappingToS32(s32Data, tileMapping);
+                            }
+
+                            // 寫入 S32 到目標地圖資料夾
+                            string s32FileName = $"{block.BlockX:x4}{block.BlockY:x4}.s32";
+                            string s32FilePath = Path.Combine(mapPath, s32FileName);
+
+                            S32Writer.Write(s32Data, s32FilePath);
+                            importedCount++;
+                        }
+                        catch (Exception ex)
+                        {
+                            errors.Add($"區塊 {block.BlockX:X4}{block.BlockY:X4}: {ex.Message}");
+                            skippedCount++;
+                        }
+                    }
+
+                    // 5. 顯示結果
+                    string resultMessage = $"匯入完成！\n\n" +
+                                           $"• 成功匯入: {importedCount} 個區塊\n";
+
+                    if (tileMapping != null)
+                    {
+                        resultMessage += $"• 匯入圖塊: {tileMapping.ImportedCount} 個\n" +
+                                         $"• 重用圖塊: {tileMapping.ReuseCount} 個\n" +
+                                         $"• 重新編號: {tileMapping.RemappedCount} 個\n";
+                    }
+
+                    if (skippedCount > 0)
+                    {
+                        resultMessage += $"\n跳過 {skippedCount} 個區塊";
+                        if (errors.Count > 0 && errors.Count <= 5)
+                        {
+                            resultMessage += ":\n" + string.Join("\n", errors);
+                        }
+                    }
+
+                    MessageBox.Show(resultMessage, "匯入完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+                    // 6. 重新載入地圖
+                    toolStripStatusLabel1.Text = "正在重新載入地圖...";
+                    Application.DoEvents();
+
+                    // 記住當前滾動位置
+                    int scrollX = _viewState.ScrollX;
+                    int scrollY = _viewState.ScrollY;
+
+                    // 重新載入
+                    LoadMap(mapPath);
+
+                    // 恢復滾動位置
+                    _viewState.SetScrollSilent(scrollX, scrollY);
+                    if (scrollX <= hScrollBar1.Maximum) hScrollBar1.Value = scrollX;
+                    if (scrollY <= vScrollBar1.Maximum) vScrollBar1.Value = scrollY;
+
+                    CheckAndRerenderIfNeeded();
+                    UpdateMiniMap();
+
+                    toolStripStatusLabel1.Text = $"已匯入 {importedCount} 個區塊";
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[ImportFs32] Error: {ex}");
+                    MessageBox.Show($"匯入失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
+        // 處理 fs32 中的 Tiles（類似 fs3p 的邏輯）
+        private TileMappingResult ProcessFs32Tiles(Fs32Data fs32)
+        {
+            // 先進行預覽分析
+            var previewResult = PreviewTileImport(fs32.Tiles);
+
+            // 如果所有 tiles 都可以重用，靜默處理
+            if (previewResult.NeedImportCount == 0 && previewResult.NeedRemapCount == 0)
+            {
+                return BuildMappingWithoutImport(fs32.Tiles);
+            }
+
+            // 需要匯入新 tiles，顯示對話框讓使用者確認
+            string message = $"地圖包包含 {fs32.Tiles.Count} 個圖塊：\n\n" +
+                             $"• 可重用 (MD5 相符): {previewResult.ReuseCount} 個\n" +
+                             $"• 需重新編號 (ID 衝突): {previewResult.NeedRemapCount} 個\n" +
+                             $"• 需新增匯入: {previewResult.NeedImportCount} 個\n\n" +
+                             $"請輸入新圖塊的起始編號：";
+
+            using (var dialog = new Form())
+            {
+                dialog.Text = "圖塊匯入設定";
+                dialog.Size = new Size(420, 220);
+                dialog.StartPosition = FormStartPosition.CenterParent;
+                dialog.FormBorderStyle = FormBorderStyle.FixedDialog;
+                dialog.MaximizeBox = false;
+                dialog.MinimizeBox = false;
+
+                var lblMessage = new Label
+                {
+                    Text = message,
+                    Location = new Point(15, 15),
+                    Size = new Size(380, 100),
+                    AutoSize = false
+                };
+                dialog.Controls.Add(lblMessage);
+
+                var lblStartId = new Label
+                {
+                    Text = "起始編號：",
+                    Location = new Point(15, 125),
+                    Size = new Size(75, 20)
+                };
+                dialog.Controls.Add(lblStartId);
+
+                var txtStartId = new TextBox
+                {
+                    Text = "10000",
+                    Location = new Point(95, 122),
+                    Size = new Size(100, 23)
+                };
+                dialog.Controls.Add(txtStartId);
+
+                var btnOK = new Button
+                {
+                    Text = "確定匯入",
+                    DialogResult = DialogResult.OK,
+                    Location = new Point(220, 145),
+                    Size = new Size(85, 28)
+                };
+                dialog.Controls.Add(btnOK);
+
+                var btnCancel = new Button
+                {
+                    Text = "取消",
+                    DialogResult = DialogResult.Cancel,
+                    Location = new Point(310, 145),
+                    Size = new Size(85, 28)
+                };
+                dialog.Controls.Add(btnCancel);
+
+                dialog.AcceptButton = btnOK;
+                dialog.CancelButton = btnCancel;
+
+                if (dialog.ShowDialog() != DialogResult.OK)
+                    return null;
+
+                if (!int.TryParse(txtStartId.Text, out int startId) || startId < 1)
+                {
+                    MessageBox.Show("請輸入有效的起始編號 (大於 0)", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                    return null;
+                }
+
+                // 執行實際匯入
+                var importer = new TileImportManager { StartSearchId = startId };
+                var result = importer.ProcessTilesBatch(fs32.Tiles);
+
+                // 檢查是否有 Tile ID 超過上限
+                CheckAndExpandTileLimit(result);
+
+                return result;
+            }
+        }
+
+        // 將 Tile Mapping 套用到 S32 的各圖層
+        private void ApplyTileMappingToS32(S32Data s32Data, TileMappingResult mapping)
+        {
+            // Layer1
+            if (s32Data.Layer1 != null)
+            {
+                for (int y = 0; y < 64; y++)
+                {
+                    for (int x = 0; x < 128; x++)
+                    {
+                        var cell = s32Data.Layer1[y, x];
+                        if (cell != null && cell.TileId > 0)
+                        {
+                            cell.TileId = mapping.GetNewTileId(cell.TileId);
+                        }
+                    }
+                }
+            }
+
+            // Layer2
+            foreach (var item in s32Data.Layer2)
+            {
+                if (item.TileId > 0)
+                {
+                    item.TileId = (ushort)mapping.GetNewTileId(item.TileId);
+                }
+            }
+
+            // Layer4
+            foreach (var obj in s32Data.Layer4)
+            {
+                if (obj.TileId > 0)
+                {
+                    obj.TileId = mapping.GetNewTileId(obj.TileId);
                 }
             }
         }
