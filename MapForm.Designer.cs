@@ -12,6 +12,7 @@ namespace L1FlyMapViewer
         private ToolStripMenuItem openToolStripMenuItem;
         private ToolStripMenuItem exportToolStripMenuItem;
         private ToolStripMenuItem importMaterialToolStripMenuItem;
+        private ToolStripMenuItem discordToolStripMenuItem;
         private StatusStrip statusStrip1;
         public ToolStripStatusLabel toolStripStatusLabel1;
         public ToolStripProgressBar toolStripProgressBar1;
@@ -146,6 +147,7 @@ namespace L1FlyMapViewer
             this.openToolStripMenuItem = new ToolStripMenuItem();
             this.exportToolStripMenuItem = new ToolStripMenuItem();
             this.importMaterialToolStripMenuItem = new ToolStripMenuItem();
+            this.discordToolStripMenuItem = new ToolStripMenuItem();
 
             // StatusStrip
             this.statusStrip1 = new StatusStrip();
@@ -293,7 +295,8 @@ namespace L1FlyMapViewer
             this.menuStrip1.Items.AddRange(new ToolStripItem[] {
                 this.openToolStripMenuItem,
                 this.importMaterialToolStripMenuItem,
-                this.exportToolStripMenuItem
+                this.exportToolStripMenuItem,
+                this.discordToolStripMenuItem
             });
             this.menuStrip1.Location = new Point(0, 0);
             this.menuStrip1.Name = "menuStrip1";
@@ -324,6 +327,14 @@ namespace L1FlyMapViewer
             this.exportToolStripMenuItem.Text = "匯出地圖通行資料";
             this.exportToolStripMenuItem.Visible = false;
             this.exportToolStripMenuItem.Click += new System.EventHandler(this.exportToolStripMenuItem_Click);
+
+            //
+            // discordToolStripMenuItem
+            //
+            this.discordToolStripMenuItem.Name = "discordToolStripMenuItem";
+            this.discordToolStripMenuItem.Size = new Size(100, 20);
+            this.discordToolStripMenuItem.Text = "到 Discord 討論";
+            this.discordToolStripMenuItem.Click += new System.EventHandler(this.discordToolStripMenuItem_Click);
 
             //
             // statusStrip1

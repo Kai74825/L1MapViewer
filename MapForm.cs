@@ -21538,5 +21538,14 @@ namespace L1FlyMapViewer
 
             form.ShowDialog(this);
         }
+
+        private void discordToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
+            {
+                FileName = "https://discord.gg/vjSKGD95HB",
+                UseShellExecute = true
+            });
+        }
     }
 }
