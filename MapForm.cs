@@ -2672,54 +2672,56 @@ namespace L1FlyMapViewer
                 if (dialog.ShowDialog() != DialogResult.OK)
                     return;
 
-                using (var saveDialog = new SaveFileDialog())
+                try
                 {
-                    saveDialog.Filter = "FS32 地圖包|*.fs32";
-                    saveDialog.FileName = $"{mapId}.fs32";
+                    // 先載入 S32 檔案
+                    toolStripStatusLabel1.Text = $"正在載入地圖 {mapId}...";
+                    Application.DoEvents();
 
-                    if (saveDialog.ShowDialog() != DialogResult.OK)
-                        return;
+                    var currentMap = Share.MapDataList[mapId];
+                    var tempDocument = new MapDocument { MapId = mapId };
 
-                    try
+                    int loadedCount = 0;
+                    foreach (var kvp in currentMap.FullFileNameList)
                     {
-                        toolStripStatusLabel1.Text = $"正在匯出地圖 {mapId}...";
-                        Application.DoEvents();
+                        string filePath = kvp.Key;
+                        var segInfo = kvp.Value;
 
-                        // 從 Share.MapDataList 取得地圖資料
-                        var currentMap = Share.MapDataList[mapId];
-                        var tempDocument = new MapDocument { MapId = mapId };
-
-                        // 讀取所有 S32 檔案
-                        int loadedCount = 0;
-                        foreach (var kvp in currentMap.FullFileNameList)
+                        if (segInfo.isS32 && File.Exists(filePath))
                         {
-                            string filePath = kvp.Key;
-                            var segInfo = kvp.Value;
-
-                            if (segInfo.isS32 && File.Exists(filePath))
+                            var s32Data = S32Parser.ParseFile(filePath);
+                            if (s32Data != null)
                             {
-                                var s32Data = S32Parser.ParseFile(filePath);
-                                if (s32Data != null)
+                                s32Data.SegInfo = segInfo;
+                                s32Data.FilePath = filePath;
+                                tempDocument.S32Files[filePath] = s32Data;
+                                loadedCount++;
+                                if (loadedCount % 10 == 0)
                                 {
-                                    tempDocument.S32Files[filePath] = s32Data;
-                                    loadedCount++;
-                                    if (loadedCount % 10 == 0)
-                                    {
-                                        toolStripStatusLabel1.Text = $"正在載入 S32 檔案... ({loadedCount})";
-                                        Application.DoEvents();
-                                    }
+                                    toolStripStatusLabel1.Text = $"正在載入 S32 檔案... ({loadedCount})";
+                                    Application.DoEvents();
                                 }
                             }
                         }
+                    }
 
-                        if (tempDocument.S32Files.Count == 0)
-                        {
-                            MessageBox.Show($"地圖 {mapId} 沒有 S32 檔案", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                            return;
-                        }
+                    if (tempDocument.S32Files.Count == 0)
+                    {
+                        MessageBox.Show($"地圖 {mapId} 沒有 S32 檔案", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        return;
+                    }
 
-                        // 檢查 Layer5 異常
-                        if (!CheckLayer5IssuesAndConfirm(tempDocument.S32Files, "匯出"))
+                    // 檢查異常（在選擇儲存位置之前）
+                    if (!CheckLayer5IssuesAndConfirm(tempDocument.S32Files, "匯出", checkTileLimit: false))
+                        return;
+
+                    // 選擇儲存位置
+                    using (var saveDialog = new SaveFileDialog())
+                    {
+                        saveDialog.Filter = "FS32 地圖包|*.fs32";
+                        saveDialog.FileName = $"{mapId}.fs32";
+
+                        if (saveDialog.ShowDialog() != DialogResult.OK)
                             return;
 
                         toolStripStatusLabel1.Text = $"正在建立 fs32 檔案...";
@@ -2727,14 +2729,49 @@ namespace L1FlyMapViewer
 
                         // 建立 fs32
                         var fs32 = Fs32Writer.CreateFromMap(tempDocument, dialog.LayerFlags, dialog.IncludeTiles);
+
+                        // 檢查並處理 R版 tiles
+                        if (dialog.IncludeTiles && fs32.Tiles.Count > 0)
+                        {
+                            int remasterCount = fs32.Tiles.Values.Count(t => L1MapViewer.Converter.L1Til.IsRemaster(t.TilData));
+                            if (remasterCount > 0)
+                            {
+                                var result = MessageBox.Show(
+                                    $"地圖包中有 {remasterCount} 個 R版 (48x48) 圖塊。\n\n" +
+                                    "是否要轉換為天1格式 (24x24)？\n\n" +
+                                    "• 是 - 轉換為天1格式 (檔案較小，相容舊版)\n" +
+                                    "• 否 - 保留 R版格式",
+                                    "R版圖塊偵測",
+                                    MessageBoxButtons.YesNo,
+                                    MessageBoxIcon.Question,
+                                    MessageBoxDefaultButton.Button1);
+
+                                if (result == DialogResult.Yes)
+                                {
+                                    foreach (var tileId in fs32.Tiles.Keys.ToList())
+                                    {
+                                        var tile = fs32.Tiles[tileId];
+                                        if (L1MapViewer.Converter.L1Til.IsRemaster(tile.TilData))
+                                        {
+                                            tile.TilData = L1MapViewer.Converter.L1Til.DownscaleTil(tile.TilData);
+                                            tile.Md5Hash = TileHashManager.CalculateMd5(tile.TilData);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Fs32Writer.Write(fs32, saveDialog.FileName);
 
-                        toolStripStatusLabel1.Text = $"已匯出至 {saveDialog.FileName} ({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+                        string resultMsg = $"已匯出至 {saveDialog.FileName}\n({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+                        toolStripStatusLabel1.Text = resultMsg.Replace("\n", " ");
+                        ShowAutoCloseMessage(resultMsg, "匯出完成");
                     }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show($"匯出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine($"[Export] Error: {ex}");
+                    MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                 }
             }
         }
@@ -4169,8 +4206,8 @@ namespace L1FlyMapViewer
                 return;
             }
 
-            // 檢查 Layer5 異常
-            if (!CheckLayer5IssuesAndConfirm(_document.S32Files, "匯出"))
+            // 檢查異常（匯出不檢查 Tile 上限）
+            if (!CheckLayer5IssuesAndConfirm(_document.S32Files, "匯出", checkTileLimit: false))
                 return;
 
             using (var dialog = new L1MapViewer.Forms.ExportOptionsDialog(isFs3p: false, hasSelection: false))
@@ -4192,13 +4229,48 @@ namespace L1FlyMapViewer
                         Application.DoEvents();
 
                         var fs32 = Fs32Writer.CreateFromMap(_document, dialog.LayerFlags, dialog.IncludeTiles);
+
+                        // 檢查並處理 R版 tiles
+                        if (dialog.IncludeTiles && fs32.Tiles.Count > 0)
+                        {
+                            int remasterCount = fs32.Tiles.Values.Count(t => L1MapViewer.Converter.L1Til.IsRemaster(t.TilData));
+                            if (remasterCount > 0)
+                            {
+                                var result = MessageBox.Show(
+                                    $"地圖包中有 {remasterCount} 個 R版 (48x48) 圖塊。\n\n" +
+                                    "是否要轉換為天1格式 (24x24)？\n\n" +
+                                    "• 是 - 轉換為天1格式 (檔案較小，相容舊版)\n" +
+                                    "• 否 - 保留 R版格式",
+                                    "R版圖塊偵測",
+                                    MessageBoxButtons.YesNo,
+                                    MessageBoxIcon.Question,
+                                    MessageBoxDefaultButton.Button1);
+
+                                if (result == DialogResult.Yes)
+                                {
+                                    foreach (var tileId in fs32.Tiles.Keys.ToList())
+                                    {
+                                        var tile = fs32.Tiles[tileId];
+                                        if (L1MapViewer.Converter.L1Til.IsRemaster(tile.TilData))
+                                        {
+                                            tile.TilData = L1MapViewer.Converter.L1Til.DownscaleTil(tile.TilData);
+                                            tile.Md5Hash = TileHashManager.CalculateMd5(tile.TilData);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Fs32Writer.Write(fs32, saveDialog.FileName);
 
-                        toolStripStatusLabel1.Text = $"已匯出至 {saveDialog.FileName} ({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+                        string resultMsg = $"已匯出至 {saveDialog.FileName}\n({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+                        toolStripStatusLabel1.Text = resultMsg.Replace("\n", " ");
+                        ShowAutoCloseMessage(resultMsg, "匯出完成");
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"匯出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Console.WriteLine($"[Export] Error: {ex}");
+                        MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -4225,8 +4297,8 @@ namespace L1FlyMapViewer
                 return;
             }
 
-            // 檢查 Layer5 異常
-            if (!CheckLayer5IssuesAndConfirm(checkedS32s, "匯出"))
+            // 檢查異常（匯出不檢查 Tile 上限）
+            if (!CheckLayer5IssuesAndConfirm(checkedS32s, "匯出", checkTileLimit: false))
                 return;
 
             using (var dialog = new L1MapViewer.Forms.ExportOptionsDialog(isFs3p: false, hasSelection: true))
@@ -4248,13 +4320,48 @@ namespace L1FlyMapViewer
                         Application.DoEvents();
 
                         var fs32 = Fs32Writer.CreateFromS32List(checkedS32s.Values.ToList(), _document.MapId, dialog.LayerFlags, dialog.IncludeTiles);
+
+                        // 檢查並處理 R版 tiles
+                        if (dialog.IncludeTiles && fs32.Tiles.Count > 0)
+                        {
+                            int remasterCount = fs32.Tiles.Values.Count(t => L1MapViewer.Converter.L1Til.IsRemaster(t.TilData));
+                            if (remasterCount > 0)
+                            {
+                                var result = MessageBox.Show(
+                                    $"地圖包中有 {remasterCount} 個 R版 (48x48) 圖塊。\n\n" +
+                                    "是否要轉換為天1格式 (24x24)？\n\n" +
+                                    "• 是 - 轉換為天1格式 (檔案較小，相容舊版)\n" +
+                                    "• 否 - 保留 R版格式",
+                                    "R版圖塊偵測",
+                                    MessageBoxButtons.YesNo,
+                                    MessageBoxIcon.Question,
+                                    MessageBoxDefaultButton.Button1);
+
+                                if (result == DialogResult.Yes)
+                                {
+                                    foreach (var tileId in fs32.Tiles.Keys.ToList())
+                                    {
+                                        var tile = fs32.Tiles[tileId];
+                                        if (L1MapViewer.Converter.L1Til.IsRemaster(tile.TilData))
+                                        {
+                                            tile.TilData = L1MapViewer.Converter.L1Til.DownscaleTil(tile.TilData);
+                                            tile.Md5Hash = TileHashManager.CalculateMd5(tile.TilData);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Fs32Writer.Write(fs32, saveDialog.FileName);
 
-                        toolStripStatusLabel1.Text = $"已匯出至 {saveDialog.FileName} ({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+                        string resultMsg = $"已匯出至 {saveDialog.FileName}\n({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+                        toolStripStatusLabel1.Text = resultMsg.Replace("\n", " ");
+                        ShowAutoCloseMessage(resultMsg, "匯出完成");
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"匯出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Console.WriteLine($"[Export] Error: {ex}");
+                        MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -8893,14 +9000,15 @@ namespace L1FlyMapViewer
             {
                 if (cell.S32Data != null)
                 {
-                    string key = cell.S32Data.FilePath;
-                    if (!string.IsNullOrEmpty(key) && !involvedS32s.ContainsKey(key))
-                        involvedS32s[key] = cell.S32Data;
+                    // 從 _document.S32Files 找到對應的 key
+                    var matchingEntry = _document.S32Files.FirstOrDefault(kvp => kvp.Value == cell.S32Data);
+                    if (!string.IsNullOrEmpty(matchingEntry.Key) && !involvedS32s.ContainsKey(matchingEntry.Key))
+                        involvedS32s[matchingEntry.Key] = cell.S32Data;
                 }
             }
 
-            // 檢查 Layer5 異常
-            if (!CheckLayer5IssuesAndConfirm(involvedS32s, "匯出"))
+            // 檢查異常（匯出不檢查 Tile 上限）
+            if (!CheckLayer5IssuesAndConfirm(involvedS32s, "匯出", checkTileLimit: false))
                 return;
 
             using (var dialog = new L1MapViewer.Forms.ExportOptionsDialog(isFs3p: false, hasSelection: true))
@@ -8928,12 +9036,47 @@ namespace L1FlyMapViewer
                             fs32 = Fs32Writer.CreateFromS32List(involvedS32s.Values.ToList(), _document.MapId, dialog.LayerFlags, dialog.IncludeTiles);
                         }
 
+                        // 檢查並處理 R版 tiles
+                        if (dialog.IncludeTiles && fs32.Tiles.Count > 0)
+                        {
+                            int remasterCount = fs32.Tiles.Values.Count(t => L1MapViewer.Converter.L1Til.IsRemaster(t.TilData));
+                            if (remasterCount > 0)
+                            {
+                                var result = MessageBox.Show(
+                                    $"地圖包中有 {remasterCount} 個 R版 (48x48) 圖塊。\n\n" +
+                                    "是否要轉換為天1格式 (24x24)？\n\n" +
+                                    "• 是 - 轉換為天1格式 (檔案較小，相容舊版)\n" +
+                                    "• 否 - 保留 R版格式",
+                                    "R版圖塊偵測",
+                                    MessageBoxButtons.YesNo,
+                                    MessageBoxIcon.Question,
+                                    MessageBoxDefaultButton.Button1);
+
+                                if (result == DialogResult.Yes)
+                                {
+                                    foreach (var tileId in fs32.Tiles.Keys.ToList())
+                                    {
+                                        var tile = fs32.Tiles[tileId];
+                                        if (L1MapViewer.Converter.L1Til.IsRemaster(tile.TilData))
+                                        {
+                                            tile.TilData = L1MapViewer.Converter.L1Til.DownscaleTil(tile.TilData);
+                                            tile.Md5Hash = TileHashManager.CalculateMd5(tile.TilData);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+
                         Fs32Writer.Write(fs32, saveDialog.FileName);
-                        toolStripStatusLabel1.Text = $"已匯出至 {saveDialog.FileName} ({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+
+                        string resultMsg = $"已匯出至 {saveDialog.FileName}\n({fs32.Blocks.Count} 區塊, {fs32.Tiles.Count} 圖塊)";
+                        toolStripStatusLabel1.Text = resultMsg.Replace("\n", " ");
+                        ShowAutoCloseMessage(resultMsg, "匯出完成");
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"匯出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Console.WriteLine($"[ExportSelectionAsFs32] Error: {ex}");
+                        MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -11030,7 +11173,8 @@ namespace L1FlyMapViewer
                     }
                     catch (Exception ex)
                     {
-                        MessageBox.Show($"匯出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                        Console.WriteLine($"[Export] Error: {ex}");
+                        MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                     }
                 }
             }
@@ -12950,7 +13094,8 @@ namespace L1FlyMapViewer
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"匯出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Console.WriteLine($"[Export] Error: {ex}");
+                        MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -15974,7 +16119,8 @@ namespace L1FlyMapViewer
                             }
                             catch (Exception ex)
                             {
-                                MessageBox.Show($"匯出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                Console.WriteLine($"[Export] Error: {ex}");
+                        MessageBox.Show($"匯出失敗: {ex.Message}\n\n{ex.StackTrace}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
                             }
                         }
                     }
@@ -19270,40 +19416,208 @@ namespace L1FlyMapViewer
         }
 
         /// <summary>
-        /// 檢查指定的 S32 檔案是否有 Layer5 異常，如果有則提示用戶確認
+        /// 檢查指定的 S32 檔案是否有異常（Layer5、無效TileId、Layer8擴展、Tile超上限），如果有則提示用戶確認
         /// </summary>
         /// <param name="s32Files">要檢查的 S32 檔案字典</param>
         /// <param name="operationName">操作名稱（用於顯示訊息）</param>
+        /// <param name="checkTileLimit">是否檢查 Tile 超過上限（匯出時不需要）</param>
         /// <returns>true = 繼續操作, false = 取消操作</returns>
-        private bool CheckLayer5IssuesAndConfirm(Dictionary<string, S32Data> s32Files, string operationName)
+        private bool CheckLayer5IssuesAndConfirm(Dictionary<string, S32Data> s32Files, string operationName, bool checkTileLimit = true)
         {
             if (s32Files == null || s32Files.Count == 0)
                 return true;
 
-            // 使用 Layer5Checker 檢查
-            var results = Layer5Checker.Check(
-                s32Files,
-                radius: -1,
-                getSegInfo: s32 => (s32.SegInfo.nLinBeginX, s32.SegInfo.nLinBeginY));
+            try
+            {
+                // 過濾掉 SegInfo 為 null 的項目
+                var validS32Files = s32Files.Where(kvp => kvp.Value?.SegInfo != null)
+                    .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
 
-            if (results.Count == 0)
-                return true;
+                if (validS32Files.Count == 0)
+                    return true;
 
-            // 統計異常類型
-            int noGroupCount = results.Count(r => r.Reason == "GroupId不存在");
-            int noObjCount = results.Count(r => r.Reason == "周圍無對應物件");
+                var msgParts = new List<string>();
+                int totalIssues = 0;
 
-            var msgParts = new List<string>();
-            if (noGroupCount > 0) msgParts.Add($"GroupId 不存在: {noGroupCount}");
-            if (noObjCount > 0) msgParts.Add($"周圍無對應物件: {noObjCount}");
+                // 1. Layer5 檢查
+                var l5Results = Layer5Checker.Check(
+                    validS32Files,
+                    radius: -1,
+                    getSegInfo: s32 => (s32.SegInfo.nLinBeginX, s32.SegInfo.nLinBeginY));
+                if (l5Results.Count > 0)
+                {
+                    int noGroupCount = l5Results.Count(r => r.Reason == "GroupId不存在");
+                    int noObjCount = l5Results.Count(r => r.Reason == "周圍無對應物件");
+                    var l5Parts = new List<string>();
+                    if (noGroupCount > 0) l5Parts.Add($"GroupId不存在:{noGroupCount}");
+                    if (noObjCount > 0) l5Parts.Add($"周圍無物件:{noObjCount}");
+                    msgParts.Add($"• {l5Results.Count} 個 Layer5 異常 ({string.Join(", ", l5Parts)})");
+                    totalIssues += l5Results.Count;
+                }
 
-            string message = $"發現 {results.Count} 個 Layer5 異常：\n\n• {string.Join("\n• ", msgParts)}\n\n" +
-                             $"這些異常可能導致遊戲中出現問題。\n是否仍要繼續{operationName}？";
+                // 2. 無效 TileId 檢查
+                var invalidTiles = CheckInvalidTileIds(validS32Files);
+                if (invalidTiles.Count > 0)
+                {
+                    int l1Count = invalidTiles.Count(t => t.layer == "Layer1");
+                    int l2Count = invalidTiles.Count(t => t.layer == "Layer2");
+                    int l4Count = invalidTiles.Count(t => t.layer == "Layer4");
+                    var tileParts = new List<string>();
+                    if (l1Count > 0) tileParts.Add($"L1:{l1Count}");
+                    if (l2Count > 0) tileParts.Add($"L2:{l2Count}");
+                    if (l4Count > 0) tileParts.Add($"L4:{l4Count}");
+                    msgParts.Add($"• {invalidTiles.Count} 個無效的 TileId ({string.Join(", ", tileParts)})");
+                    totalIssues += invalidTiles.Count;
+                }
 
-            var result = MessageBox.Show(message, "Layer5 異常警告",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                // 3. Layer8 擴展格式檢查
+                var l8Extended = validS32Files.Where(kvp => kvp.Value.Layer8HasExtendedData).ToList();
+                if (l8Extended.Count > 0)
+                {
+                    int totalL8Items = l8Extended.Sum(kvp => kvp.Value.Layer8.Count);
+                    msgParts.Add($"• {l8Extended.Count} 個 S32 使用 Layer8 擴展格式（共 {totalL8Items} 個項目，可能導致閃退）");
+                    totalIssues += l8Extended.Count;
+                }
 
-            return result == DialogResult.Yes;
+                // 4. Tile 超過上限檢查（匯出時不需要）
+                if (checkTileLimit)
+                {
+                    var (overLimitTiles, tileLimit, maxTileId) = CheckOverLimitTileIds(validS32Files);
+                    if (overLimitTiles.Count > 0)
+                    {
+                        msgParts.Add($"• {overLimitTiles.Count} 個 Tile 超過上限 (上限={tileLimit}, 最大={maxTileId})，將無法顯示或導致閃退");
+                        totalIssues += overLimitTiles.Count;
+                    }
+                }
+
+                if (totalIssues == 0)
+                    return true;
+
+                string message = $"發現以下異常：\n\n{string.Join("\n", msgParts)}\n\n" +
+                                 $"這些異常可能導致遊戲中出現問題。\n是否仍要繼續{operationName}？";
+
+                var result = MessageBox.Show(message, "異常檢查警告",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+
+                return result == DialogResult.Yes;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"[CheckIssues] Error: {ex}");
+                var result = MessageBox.Show($"異常檢查時發生錯誤：\n{ex.Message}\n\n{ex.StackTrace}\n\n是否仍要繼續{operationName}？",
+                    "檢查錯誤", MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                return result == DialogResult.Yes;
+            }
+        }
+
+        /// <summary>
+        /// 檢查指定 S32 檔案中的無效 TileId
+        /// </summary>
+        private List<(string filePath, string layer, int tileId)> CheckInvalidTileIds(Dictionary<string, S32Data> s32Files)
+        {
+            var invalidTiles = new List<(string filePath, string layer, int tileId)>();
+
+            // 建立可用 TileId 的 HashSet
+            var availableTileIds = new HashSet<int>();
+            L1PakReader.UnPack("Tile", "1.til");  // 觸發載入
+            if (Share.IdxDataList.TryGetValue("Tile", out var tileIdx))
+            {
+                foreach (var key in tileIdx.Keys)
+                {
+                    string name = Path.GetFileNameWithoutExtension(key);
+                    if (int.TryParse(name, out int tileId))
+                        availableTileIds.Add(tileId);
+                }
+            }
+
+            if (availableTileIds.Count == 0)
+                return invalidTiles;
+
+            foreach (var kvp in s32Files)
+            {
+                var s32Data = kvp.Value;
+
+                // Layer1
+                for (int y = 0; y < 64; y++)
+                {
+                    for (int x = 0; x < 128; x++)
+                    {
+                        var cell = s32Data.Layer1[y, x];
+                        if (cell != null && cell.TileId > 0 && !availableTileIds.Contains(cell.TileId))
+                            invalidTiles.Add((kvp.Key, "Layer1", cell.TileId));
+                    }
+                }
+
+                // Layer2
+                foreach (var item in s32Data.Layer2)
+                {
+                    if (item.TileId > 0 && !availableTileIds.Contains(item.TileId))
+                        invalidTiles.Add((kvp.Key, "Layer2", item.TileId));
+                }
+
+                // Layer4
+                foreach (var obj in s32Data.Layer4)
+                {
+                    if (obj.TileId > 0 && !availableTileIds.Contains(obj.TileId))
+                        invalidTiles.Add((kvp.Key, "Layer4", obj.TileId));
+                }
+            }
+
+            return invalidTiles;
+        }
+
+        /// <summary>
+        /// 檢查指定 S32 檔案中超過上限的 TileId
+        /// </summary>
+        private (List<int> overLimitTileIds, int tileLimit, int maxTileId) CheckOverLimitTileIds(Dictionary<string, S32Data> s32Files)
+        {
+            var overLimitIds = new HashSet<int>();
+            int maxId = 0;
+
+            int tileLimit = TileHashManager.GetTileLimit();
+            if (tileLimit <= 0)
+                return (new List<int>(), tileLimit, maxId);
+
+            foreach (var kvp in s32Files)
+            {
+                var s32Data = kvp.Value;
+
+                // Layer1
+                for (int y = 0; y < 64; y++)
+                {
+                    for (int x = 0; x < 128; x++)
+                    {
+                        var cell = s32Data.Layer1[y, x];
+                        if (cell != null && cell.TileId > 0)
+                        {
+                            if (cell.TileId > maxId) maxId = cell.TileId;
+                            if (cell.TileId > tileLimit) overLimitIds.Add(cell.TileId);
+                        }
+                    }
+                }
+
+                // Layer2
+                foreach (var item in s32Data.Layer2)
+                {
+                    if (item.TileId > 0)
+                    {
+                        if (item.TileId > maxId) maxId = item.TileId;
+                        if (item.TileId > tileLimit) overLimitIds.Add(item.TileId);
+                    }
+                }
+
+                // Layer4
+                foreach (var obj in s32Data.Layer4)
+                {
+                    if (obj.TileId > 0)
+                    {
+                        if (obj.TileId > maxId) maxId = obj.TileId;
+                        if (obj.TileId > tileLimit) overLimitIds.Add(obj.TileId);
+                    }
+                }
+            }
+
+            return (overLimitIds.ToList(), tileLimit, maxId);
         }
 
         // 無效 TileId 資訊類別
@@ -20691,6 +21005,47 @@ namespace L1FlyMapViewer
             s32Data.IsModified = true;
 
             return s32Data;
+        }
+
+        /// <summary>
+        /// 顯示自動關閉的訊息視窗
+        /// </summary>
+        /// <param name="message">訊息內容</param>
+        /// <param name="title">視窗標題</param>
+        /// <param name="seconds">自動關閉秒數</param>
+        private void ShowAutoCloseMessage(string message, string title, int seconds = 3)
+        {
+            var form = new Form
+            {
+                Text = title,
+                Size = new Size(400, 150),
+                FormBorderStyle = FormBorderStyle.FixedDialog,
+                StartPosition = FormStartPosition.CenterParent,
+                MaximizeBox = false,
+                MinimizeBox = false,
+                ShowInTaskbar = false
+            };
+
+            var label = new Label
+            {
+                Text = message,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleCenter,
+                Dock = DockStyle.Fill,
+                Font = new Font(form.Font.FontFamily, 10f)
+            };
+            form.Controls.Add(label);
+
+            var timer = new System.Windows.Forms.Timer { Interval = seconds * 1000 };
+            timer.Tick += (s, e) =>
+            {
+                timer.Stop();
+                timer.Dispose();
+                form.Close();
+            };
+            timer.Start();
+
+            form.ShowDialog(this);
         }
     }
 }
