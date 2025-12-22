@@ -48,35 +48,48 @@ namespace L1MapViewer.Converter {
                     if (blockCount <= 0)
                         return TileVersion.Unknown;
 
-                    // 讀取前兩個 offset 來計算第一個 block 大小
-                    int offset0 = br.ReadInt32();
-                    int offset1 = br.ReadInt32();
-                    int firstBlockSize = offset1 - offset0;
-
-                    // 根據 block 大小判斷
-                    // 24x24: 2*12*13*2 + 1 = 625 bytes (容許範圍 10-1000)
-                    // 48x48: 2*24*25*2 + 1 = 2401 bytes (容許範圍 1800-3500)
-                    // 混合格式的第一個 block 可能很小（壓縮格式）
-                    if (firstBlockSize >= 1800 && firstBlockSize <= 3500)
-                        return TileVersion.Remaster;
-                    else if (firstBlockSize >= 10 && firstBlockSize <= 1800)
+                    // 讀取所有 offset（blockCount + 1 個）
+                    var offsets = new List<int>();
+                    for (int i = 0; i <= blockCount; i++)
                     {
-                        // 解析所有 blocks 檢查格式
-                        var blocks = Parse(tilData);
-
-                        // 只要有一個 block 是 48x48，就是 Remaster
-                        if (HasAny48x48Block(blocks))
-                            return TileVersion.Remaster;
-
-                        // 所有 block 都是 24x24，就是 Classic
-                        if (AllBlocksAreClassic(blocks))
-                            return TileVersion.Classic;
-
-                        // 其他情況視為 Unknown
-                        return TileVersion.Unknown;
+                        offsets.Add(br.ReadInt32());
                     }
-                    else
+
+                    // 去重複並排序
+                    var uniqueOffsets = offsets.Distinct().OrderBy(x => x).ToList();
+
+                    // 如果只有一個值，無法判斷
+                    if (uniqueOffsets.Count < 2)
                         return TileVersion.Unknown;
+
+                    // 計算相鄰差值，找最大的 block 大小
+                    int maxBlockSize = 0;
+                    for (int i = 1; i < uniqueOffsets.Count; i++)
+                    {
+                        int diff = uniqueOffsets[i] - uniqueOffsets[i - 1];
+                        if (diff > maxBlockSize)
+                            maxBlockSize = diff;
+                    }
+
+                    // 根據最大 block 大小判斷
+                    // 48x48 簡單菱形: ~2401 bytes
+                    // 24x24 簡單菱形: ~625 bytes
+                    // 壓縮格式可能更小或更大
+                    if (maxBlockSize >= 1800)
+                        return TileVersion.Remaster;
+                    else if (maxBlockSize >= 10 && maxBlockSize <= 1000)
+                        return TileVersion.Classic;
+
+                    // 無法從 offset 判斷，解析 blocks 檢查
+                    var blocks = Parse(tilData);
+
+                    if (HasAny48x48Block(blocks))
+                        return TileVersion.Remaster;
+
+                    if (AllBlocksAreClassic(blocks))
+                        return TileVersion.Classic;
+
+                    return TileVersion.Unknown;
                 }
             }
             catch
