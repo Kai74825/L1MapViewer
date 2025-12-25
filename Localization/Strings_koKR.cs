@@ -170,7 +170,8 @@ namespace L1MapViewer.Localization
             { "Layer_FloatPassable", "통행" },
             { "Layer_FloatGrid", "그리드" },
             { "Layer_FloatS32Border", "S32 경계" },
-            { "Layer_FloatRegions", "전투" },
+            { "Layer_FloatSafeZones", "안전 지역" },
+            { "Layer_FloatCombatZones", "전투 지역" },
 
             // === Hints ===
             { "Hint_MouseControls", "마우스 가운데 버튼으로 드래그 | Ctrl+휠로 확대/축소 | 좌클릭으로 선택" },

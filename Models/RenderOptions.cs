@@ -23,8 +23,11 @@ namespace L1MapViewer.Models
         /// <summary>顯示通行性覆蓋層</summary>
         public bool ShowPassability { get; }
 
-        /// <summary>顯示區域標記（安全區/戰鬥區）</summary>
-        public bool ShowRegions { get; }
+        /// <summary>顯示安全區域（藍色）</summary>
+        public bool ShowSafeZones { get; }
+
+        /// <summary>顯示戰鬥區域（紅色）</summary>
+        public bool ShowCombatZones { get; }
 
         /// <summary>顯示遊戲格線</summary>
         public bool ShowGrid { get; }
@@ -50,7 +53,8 @@ namespace L1MapViewer.Models
             bool showLayer4 = true,
             bool showLayer3Attributes = false,
             bool showPassability = false,
-            bool showRegions = false,
+            bool showSafeZones = false,
+            bool showCombatZones = false,
             bool showGrid = false,
             bool showS32Boundary = false,
             bool showLayer5 = false,
@@ -62,7 +66,8 @@ namespace L1MapViewer.Models
             ShowLayer4 = showLayer4;
             ShowLayer3Attributes = showLayer3Attributes;
             ShowPassability = showPassability;
-            ShowRegions = showRegions;
+            ShowSafeZones = showSafeZones;
+            ShowCombatZones = showCombatZones;
             ShowGrid = showGrid;
             ShowS32Boundary = showS32Boundary;
             ShowLayer5 = showLayer5;
@@ -81,7 +86,8 @@ namespace L1MapViewer.Models
                 showLayer4: viewState.ShowLayer4,
                 showLayer3Attributes: viewState.ShowLayer3,
                 showPassability: viewState.ShowPassability,
-                showRegions: viewState.ShowRegions,
+                showSafeZones: viewState.ShowSafeZones,
+                showCombatZones: viewState.ShowCombatZones,
                 showGrid: viewState.ShowGrid,
                 showS32Boundary: viewState.ShowS32Boundary,
                 showLayer5: false,
@@ -108,7 +114,8 @@ namespace L1MapViewer.Models
             showLayer4: true,
             showLayer3Attributes: true,
             showPassability: true,
-            showRegions: true,
+            showSafeZones: true,
+            showCombatZones: true,
             showGrid: true,
             showS32Boundary: true
         );
@@ -121,7 +128,7 @@ namespace L1MapViewer.Models
         /// <summary>
         /// 檢查是否有任何覆蓋層開啟
         /// </summary>
-        public bool HasOverlays => ShowLayer3Attributes || ShowPassability || ShowRegions ||
-                                   ShowGrid || ShowS32Boundary || ShowLayer5 || ShowCoordinateLabels;
+        public bool HasOverlays => ShowLayer3Attributes || ShowPassability || ShowSafeZones ||
+                                   ShowCombatZones || ShowGrid || ShowS32Boundary || ShowLayer5 || ShowCoordinateLabels;
     }
 }

@@ -170,7 +170,8 @@ namespace L1MapViewer.Localization
             { "Layer_FloatPassable", "Pass" },
             { "Layer_FloatGrid", "Grid" },
             { "Layer_FloatS32Border", "S32 Border" },
-            { "Layer_FloatRegions", "Combat" },
+            { "Layer_FloatSafeZones", "Safe Zone" },
+            { "Layer_FloatCombatZones", "Combat" },
 
             // === Hints ===
             { "Hint_MouseControls", "Middle-click to drag | Ctrl+Scroll to zoom | Left-click to select" },

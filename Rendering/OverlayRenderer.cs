@@ -31,9 +31,9 @@ namespace L1MapViewer.Rendering
                 DrawPassability(bitmap, worldRect, s32Files);
             }
 
-            if (options.ShowRegions)
+            if (options.ShowSafeZones || options.ShowCombatZones)
             {
-                DrawRegions(bitmap, worldRect, s32Files);
+                DrawRegions(bitmap, worldRect, s32Files, options.ShowSafeZones, options.ShowCombatZones);
             }
 
             if (options.ShowGrid)
@@ -173,12 +173,11 @@ namespace L1MapViewer.Rendering
         /// <summary>
         /// 繪製區域覆蓋層（安全區/戰鬥區）
         /// </summary>
-        public void DrawRegions(Bitmap bitmap, Rectangle worldRect, IEnumerable<S32Data> s32Files)
+        public void DrawRegions(Bitmap bitmap, Rectangle worldRect, IEnumerable<S32Data> s32Files, bool showSafeZones, bool showCombatZones)
         {
             using (Graphics g = Graphics.FromImage(bitmap))
             {
                 // 定義區域顏色（半透明）
-                using (Brush normalBrush = new SolidBrush(Color.FromArgb(40, 255, 255, 255)))   // 淺白色
                 using (Brush safeBrush = new SolidBrush(Color.FromArgb(80, 0, 150, 255)))       // 藍色
                 using (Brush combatBrush = new SolidBrush(Color.FromArgb(80, 180, 0, 255)))     // 紫色
                 {
@@ -197,6 +196,14 @@ namespace L1MapViewer.Rendering
                                 // 檢查區域類型
                                 bool isSafe = attr != null && ((attr.Attribute1 & 0x02) != 0 || (attr.Attribute2 & 0x02) != 0);
                                 bool isCombat = attr != null && ((attr.Attribute1 & 0x04) != 0 || (attr.Attribute2 & 0x04) != 0);
+
+                                // 根據顯示選項過濾
+                                if (isSafe && !showSafeZones) isSafe = false;
+                                if (isCombat && !showCombatZones) isCombat = false;
+
+                                // 如果沒有需要顯示的區域，跳過
+                                if (!isSafe && !isCombat)
+                                    continue;
 
                                 int x1 = x * 2;
                                 int localBaseX = 0 - 24 * (x1 / 2);
@@ -218,15 +225,8 @@ namespace L1MapViewer.Rendering
                                     new Point(X + 0, Y + 12)       // 左
                                 };
 
-                                // 選擇對應的顏色
-                                Brush regionBrush;
-                                if (isCombat)
-                                    regionBrush = combatBrush;
-                                else if (isSafe)
-                                    regionBrush = safeBrush;
-                                else
-                                    regionBrush = normalBrush;
-
+                                // 選擇對應的顏色（戰鬥區優先）
+                                Brush regionBrush = isCombat ? combatBrush : safeBrush;
                                 g.FillPolygon(regionBrush, diamond);
                             }
                         }
