@@ -18849,7 +18849,28 @@ namespace L1FlyMapViewer
             sprImageList.ImageSize = new Size(48, 48);
             sprImageList.ColorDepth = ColorDepth.Depth32Bit;
 
-            // 載入 SPR 圖片的輔助方法 (返回縮圖, 成功時也快取大圖)
+            // 動畫快取：儲存所有帧
+            Dictionary<int, List<Image>> sprAnimationCache = new Dictionary<int, List<Image>>();
+
+            // 將 RGBA 像素轉換為 BGRA 並建立 Bitmap
+            Bitmap CreateBitmapFromRgba(byte[] rgbaPixels, int width, int height)
+            {
+                byte[] bgraPixels = new byte[rgbaPixels.Length];
+                for (int i = 0; i < rgbaPixels.Length; i += 4)
+                {
+                    bgraPixels[i + 0] = rgbaPixels[i + 2]; // B <- R
+                    bgraPixels[i + 1] = rgbaPixels[i + 1]; // G <- G
+                    bgraPixels[i + 2] = rgbaPixels[i + 0]; // R <- B
+                    bgraPixels[i + 3] = rgbaPixels[i + 3]; // A <- A
+                }
+                Bitmap bmp = new Bitmap(width, height, PixelFormat.Format32bppArgb);
+                var bmpData = bmp.LockBits(new Rectangle(0, 0, width, height), ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
+                System.Runtime.InteropServices.Marshal.Copy(bgraPixels, 0, bmpData.Scan0, bgraPixels.Length);
+                bmp.UnlockBits(bmpData);
+                return bmp;
+            }
+
+            // 載入 SPR 圖片的輔助方法 (返回縮圖, 成功時也快取大圖和動畫帧)
             Image LoadSprImage(int sprId)
             {
                 if (sprImageCache.TryGetValue(sprId, out Image cached))
@@ -18864,17 +18885,25 @@ namespace L1FlyMapViewer
                         var frames = SprReader.LoadRaw(sprData);
                         if (frames != null && frames.Length > 0)
                         {
+                            // 載入所有帧到動畫快取
+                            List<Image> animFrames = new List<Image>();
+                            foreach (var f in frames)
+                            {
+                                if (f.Width > 0 && f.Height > 0 && f.Pixels != null)
+                                {
+                                    animFrames.Add(CreateBitmapFromRgba(f.Pixels, f.Width, f.Height));
+                                }
+                            }
+                            if (animFrames.Count > 0)
+                            {
+                                sprAnimationCache[sprId] = animFrames;
+                                sprFullImageCache[sprId] = animFrames[0]; // 第一帧作為靜態預覽
+                            }
+
                             var frame = frames[0];
                             if (frame.Width > 0 && frame.Height > 0 && frame.Pixels != null)
                             {
-                                // 從 RGBA byte[] 建立原始大小圖片
-                                Bitmap fullBmp = new Bitmap(frame.Width, frame.Height, PixelFormat.Format32bppArgb);
-                                var fullBmpData = fullBmp.LockBits(
-                                    new Rectangle(0, 0, frame.Width, frame.Height),
-                                    ImageLockMode.WriteOnly, PixelFormat.Format32bppArgb);
-                                System.Runtime.InteropServices.Marshal.Copy(frame.Pixels, 0, fullBmpData.Scan0, frame.Pixels.Length);
-                                fullBmp.UnlockBits(fullBmpData);
-                                sprFullImageCache[sprId] = fullBmp;
+                                Bitmap fullBmp = (Bitmap)animFrames[0];
 
                                 // 建立 48x48 的縮圖
                                 Bitmap bmp = new Bitmap(48, 48, PixelFormat.Format32bppArgb);
@@ -19004,6 +19033,29 @@ namespace L1FlyMapViewer
             lblNoImageCount.Size = new Size(160, 20);
             lblNoImageCount.ForeColor = Color.Gray;
             gbPreview.Controls.Add(lblNoImageCount);
+
+            // 動畫播放控制
+            System.Windows.Forms.Timer animTimer = new System.Windows.Forms.Timer();
+            animTimer.Interval = 100; // 100ms per frame
+            int currentAnimFrame = 0;
+            List<Image> currentAnimFrames = null;
+            int currentAnimSprId = -1;
+
+            animTimer.Tick += (s, args) =>
+            {
+                if (currentAnimFrames != null && currentAnimFrames.Count > 1)
+                {
+                    currentAnimFrame = (currentAnimFrame + 1) % currentAnimFrames.Count;
+                    pbPreview.Image = currentAnimFrames[currentAnimFrame];
+                }
+            };
+
+            // 表單關閉時停止動畫
+            resultForm.FormClosed += (s, args) =>
+            {
+                animTimer.Stop();
+                animTimer.Dispose();
+            };
 
             // 調整 TabControl 大小以容納預覽區
             tabControl.Size = new Size(620, 330);
@@ -19279,15 +19331,47 @@ namespace L1FlyMapViewer
                     currentSelectedItem = (filePath, item);
                     btnJumpToLocation.Enabled = true;
 
-                    // 顯示大圖
-                    if (sprFullImageCache.TryGetValue(item.SprId, out Image fullImg))
+                    // 檢查是否有動畫帧
+                    if (sprAnimationCache.TryGetValue(item.SprId, out List<Image> frames) && frames.Count > 0)
                     {
+                        // 設定動畫
+                        currentAnimFrames = frames;
+                        currentAnimFrame = 0;
+                        currentAnimSprId = item.SprId;
+                        pbPreview.Image = frames[0];
+
+                        string frameInfo = frames.Count > 1 ? $" ({frames.Count} 帧)" : "";
+                        lblPreviewInfo.Text = $"SprId: {item.SprId}{frameInfo}\n大小: {frames[0].Width}x{frames[0].Height}\n位置: ({item.X}, {item.Y})";
+                        lblPreviewInfo.ForeColor = Color.White;
+
+                        // 只有多帧才啟動動畫
+                        if (frames.Count > 1)
+                        {
+                            animTimer.Start();
+                        }
+                        else
+                        {
+                            animTimer.Stop();
+                        }
+                    }
+                    else if (sprFullImageCache.TryGetValue(item.SprId, out Image fullImg))
+                    {
+                        // 停止動畫
+                        animTimer.Stop();
+                        currentAnimFrames = null;
+                        currentAnimSprId = -1;
+
                         pbPreview.Image = fullImg;
                         lblPreviewInfo.Text = $"SprId: {item.SprId}\n大小: {fullImg.Width}x{fullImg.Height}\n位置: ({item.X}, {item.Y})";
                         lblPreviewInfo.ForeColor = Color.White;
                     }
                     else
                     {
+                        // 停止動畫
+                        animTimer.Stop();
+                        currentAnimFrames = null;
+                        currentAnimSprId = -1;
+
                         pbPreview.Image = null;
                         lblPreviewInfo.Text = $"SprId: {item.SprId}\n(無法載入圖片)\n位置: ({item.X}, {item.Y})";
                         lblPreviewInfo.ForeColor = Color.OrangeRed;
@@ -19295,6 +19379,11 @@ namespace L1FlyMapViewer
                 }
                 else
                 {
+                    // 停止動畫
+                    animTimer.Stop();
+                    currentAnimFrames = null;
+                    currentAnimSprId = -1;
+
                     currentSelectedItem = null;
                     btnJumpToLocation.Enabled = false;
                     pbPreview.Image = null;
@@ -19314,48 +19403,13 @@ namespace L1FlyMapViewer
 
                 if (_document.S32Files.TryGetValue(filePath, out S32Data s32Data))
                 {
-                    // 直接使用已知的 S32 來計算跳轉位置
-                    // item.X, item.Y 是相對於 S32 的本地座標
-                    int localX = item.X;
-                    int localY = item.Y;
+                    // Layer8 的 X, Y 是 Layer3 座標系 (0-63)，轉換為全域遊戲座標
+                    int globalX = item.X;
+                    int globalY = item.Y;
 
-                    // 計算世界像素座標
-                    int[] loc = s32Data.SegInfo.GetLoc(1.0);
-                    int mx = loc[0];
-                    int my = loc[1];
+                    // 使用既有的座標跳轉方法
+                    JumpToGameCoordinate(globalX, globalY);
 
-                    // S32 的渲染邏輯：菱形地圖
-                    int layer1X = localX * 2;  // 轉換為 Layer1 座標
-                    int localBaseX = -24 * (layer1X / 2);
-                    int localBaseY = 63 * 12 - 12 * (layer1X / 2);
-
-                    int worldX = mx + localBaseX + layer1X * 24 + localY * 24;
-                    int worldY = my + localBaseY + localY * 12;
-
-                    // 捲動到該位置（置中）
-                    int viewportWidthWorld = (int)(s32MapPanel.Width / s32ZoomLevel);
-                    int viewportHeightWorld = (int)(s32MapPanel.Height / s32ZoomLevel);
-                    int scrollX = worldX - viewportWidthWorld / 2;
-                    int scrollY = worldY - viewportHeightWorld / 2;
-
-                    int maxScrollX = Math.Max(0, _viewState.MapWidth - viewportWidthWorld);
-                    int maxScrollY = Math.Max(0, _viewState.MapHeight - viewportHeightWorld);
-                    scrollX = Math.Max(0, Math.Min(scrollX, maxScrollX));
-                    scrollY = Math.Max(0, Math.Min(scrollY, maxScrollY));
-
-                    _viewState.SetScrollSilent(scrollX, scrollY);
-
-                    // 設定高亮
-                    _editState.HighlightedS32Data = s32Data;
-                    _editState.HighlightedCellX = layer1X;
-                    _editState.HighlightedCellY = localY;
-
-                    // 觸發重繪
-                    CheckAndRerenderIfNeeded();
-                    UpdateMiniMap();
-
-                    int globalX = s32Data.SegInfo.nLinBeginX + item.X;
-                    int globalY = s32Data.SegInfo.nLinBeginY + item.Y;
                     this.toolStripStatusLabel1.Text = $"已跳轉到 L8 項目位置 ({globalX}, {globalY}) - SprId: {item.SprId}";
                 }
             };
