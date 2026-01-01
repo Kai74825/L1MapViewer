@@ -663,7 +663,8 @@ namespace L1FlyMapViewer
             btnToolClearCell.Text = LocalizationManager.L("Button_ClearCell");
             // 右側工具按鈕 - 下方查詢
             btnToolCheckL1.Text = LocalizationManager.L("Button_CheckL1");
-            btnToolCheckL2.Text = LocalizationManager.L("Button_ClearL2");
+            btnToolCheckL2.Text = LocalizationManager.L("Button_CheckL2");
+            btnToolCheckL3.Text = LocalizationManager.L("Button_CheckL3");
             btnToolCheckL4.Text = LocalizationManager.L("Button_CheckL4");
             btnToolCheckL5.Text = LocalizationManager.L("Button_CheckL5");
             btnToolCheckL6.Text = LocalizationManager.L("Button_CheckL6");
@@ -11814,6 +11815,7 @@ namespace L1FlyMapViewer
             Panel panel = new Panel();
             panel.BorderStyle = BorderStyle.FixedSingle;
             panel.Dock = DockStyle.Fill;
+            panel.AutoScroll = true; // 內容過長時可捲動
 
             Label title = new Label();
             title.Text = "第3層 (屬性)";
@@ -11823,63 +11825,57 @@ namespace L1FlyMapViewer
             title.TextAlign = ContentAlignment.MiddleCenter;
             panel.Controls.Add(title);
 
-            // 注意：第3層是 64x64，第1層是 64x128
-            // 所以需要將 x 座標除以 2
-            int layer3X = x / 2;
-            if (layer3X >= 64) layer3X = 63;
+            // Layer3 使用遊戲座標 (0~63, 0~63)
+            // Layer1 的 X 需要除以 2 轉換為遊戲座標
+            int gameX = x / 2;
+            if (gameX >= 64) gameX = 63;
 
-            // x 偶數用 Attribute1 (左上)，x 奇數用 Attribute2 (右上)
-            bool isEvenX = (x % 2 == 0);
-
-            var attr = currentS32Data.Layer3[y, layer3X];
+            var attr = currentS32Data.Layer3[y, gameX];
             if (attr != null)
             {
+                // 內容面板（放在可捲動區域內）
+                Panel contentPanel = new Panel();
+                contentPanel.Dock = DockStyle.Top;
+                contentPanel.AutoSize = true;
+                contentPanel.Padding = new Padding(5);
+
                 Label info = new Label();
-                string attrText = $"第3層座標: [{layer3X}, {y}]\n";
-                attrText += $"第1層 X={x} ({(isEvenX ? "偶數" : "奇數")})\n\n";
+                info.AutoSize = true;
 
-                // 顯示當前格子對應的屬性
-                short currentAttr = isEvenX ? attr.Attribute1 : attr.Attribute2;
-                string posName = isEvenX ? "左上" : "右上";
+                string attrText = $"遊戲座標: ({gameX}, {y})\n";
+                attrText += $"(Layer1 X={x})\n";
+                attrText += "─────────────\n";
 
-                // 解析區域類型
-                int lowNibble = currentAttr & 0x0F;
-                bool isPassable = (currentAttr & 0x01) == 0;
-                bool isSafe = (lowNibble & 0x04) != 0;
-                bool isCombat = (lowNibble & 0x0C) == 0x08;
+                // Attribute1 (左上)
+                short attr1 = attr.Attribute1;
+                int low1 = attr1 & 0x0F;
+                bool pass1 = (attr1 & 0x01) == 0;
+                bool safe1 = (low1 & 0x04) != 0;
+                bool combat1 = (low1 & 0x0C) == 0x08;
+                string region1 = safe1 ? "安全" : (combat1 ? "戰鬥" : "一般");
 
-                string regionType = "一般區域";
-                if (isSafe) regionType = "安全區域";
-                else if (isCombat) regionType = "戰鬥區域";
+                attrText += $"\n【Attr1 左上】\n";
+                attrText += $"  值: 0x{attr1:X4}\n";
+                attrText += $"  區域: {region1}\n";
+                attrText += $"  通行: {(pass1 ? "可" : "不可")}\n";
 
-                string passable = isPassable ? "可通行" : "不可通行";
+                // Attribute2 (右上)
+                short attr2 = attr.Attribute2;
+                int low2 = attr2 & 0x0F;
+                bool pass2 = (attr2 & 0x01) == 0;
+                bool safe2 = (low2 & 0x04) != 0;
+                bool combat2 = (low2 & 0x0C) == 0x08;
+                string region2 = safe2 ? "安全" : (combat2 ? "戰鬥" : "一般");
 
-                attrText += $"【{posName}】(當前格)\n";
-                attrText += $"  區域: {regionType}\n";
-                attrText += $"  通行: {passable}\n";
-                attrText += $"  值: {currentAttr} (0x{currentAttr:X4})\n\n";
-
-                // 也顯示另一邊的屬性供參考
-                short otherAttr = isEvenX ? attr.Attribute2 : attr.Attribute1;
-                string otherPosName = isEvenX ? "右上" : "左上";
-                int otherLowNibble = otherAttr & 0x0F;
-                bool otherPassable = (otherAttr & 0x01) == 0;
-                bool otherSafe = (otherLowNibble & 0x04) != 0;
-                bool otherCombat = (otherLowNibble & 0x0C) == 0x08;
-
-                string otherRegion = "一般";
-                if (otherSafe) otherRegion = "安全";
-                else if (otherCombat) otherRegion = "戰鬥";
-
-                attrText += $"【{otherPosName}】\n";
-                attrText += $"  {otherRegion}, {(otherPassable ? "可通行" : "不可通行")}\n";
-                attrText += $"  值: 0x{otherAttr:X4}";
+                attrText += $"\n【Attr2 右上】\n";
+                attrText += $"  值: 0x{attr2:X4}\n";
+                attrText += $"  區域: {region2}\n";
+                attrText += $"  通行: {(pass2 ? "可" : "不可")}";
 
                 info.Text = attrText;
-                info.Dock = DockStyle.Fill;
-                info.TextAlign = ContentAlignment.TopLeft;
-                info.Padding = new Padding(5);
-                panel.Controls.Add(info);
+                info.Location = new Point(5, 5);
+                contentPanel.Controls.Add(info);
+                panel.Controls.Add(contentPanel);
 
                 // 刪除按鈕
                 Button btnDelete = new Button();
@@ -11892,10 +11888,10 @@ namespace L1FlyMapViewer
                 {
                     if (MessageBox.Show("確定要清除此格的屬性嗎？", "確認", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                     {
-                        currentS32Data.Layer3[y, layer3X] = new MapAttribute { Attribute1 = 0, Attribute2 = 0 };
+                        currentS32Data.Layer3[y, gameX] = new MapAttribute { Attribute1 = 0, Attribute2 = 0 };
                         isS32Modified = true;
                         RenderS32Map();
-                        this.toolStripStatusLabel1.Text = $"已清除第3層 ({layer3X},{y}) 的屬性";
+                        this.toolStripStatusLabel1.Text = $"已清除第3層 ({gameX},{y}) 的屬性";
 
                         // 更新當前面板顯示
                         info.Text = "已清除屬性";
@@ -21433,6 +21429,16 @@ namespace L1FlyMapViewer
                     s32Stats.Add((filePath, fileName, safeCount, combatCount, impassableCount, totalNonZero));
             }
 
+            // 預設排序：S32 asc, X asc, Y asc
+            allItems.Sort((a, b) =>
+            {
+                int cmp = string.Compare(a.fileName, b.fileName, StringComparison.Ordinal);
+                if (cmp != 0) return cmp;
+                cmp = a.x.CompareTo(b.x);
+                if (cmp != 0) return cmp;
+                return a.y.CompareTo(b.y);
+            });
+
             // 顯示結果
             Form resultForm = new Form();
             resultForm.Text = $"L3 查看 - 共 {allItems.Count} 筆資料";
@@ -21455,15 +21461,19 @@ namespace L1FlyMapViewer
             lvItems.Columns.Add("S32", 120);
             lvItems.Columns.Add("X", 50);
             lvItems.Columns.Add("Y", 50);
-            lvItems.Columns.Add("Attr1", 70);
-            lvItems.Columns.Add("區域1", 50);
+            lvItems.Columns.Add("Attr1(左上)", 95);
+            lvItems.Columns.Add("區域1", 60);
             lvItems.Columns.Add("通行1", 70);
-            lvItems.Columns.Add("Attr2", 70);
-            lvItems.Columns.Add("區域2", 50);
+            lvItems.Columns.Add("Attr2(右上)", 95);
+            lvItems.Columns.Add("區域2", 60);
             lvItems.Columns.Add("通行2", 70);
 
-            foreach (var item in allItems)
+            // 使用 VirtualMode 處理大量資料
+            lvItems.VirtualMode = true;
+            lvItems.VirtualListSize = allItems.Count;
+            lvItems.RetrieveVirtualItem += (s, args) =>
             {
+                var item = allItems[args.ItemIndex];
                 var lvi = new ListViewItem(item.fileName);
                 lvi.SubItems.Add(item.x.ToString());
                 lvi.SubItems.Add(item.y.ToString());
@@ -21474,32 +21484,63 @@ namespace L1FlyMapViewer
                 lvi.SubItems.Add(item.region2);
                 lvi.SubItems.Add(item.pass2);
                 lvi.Tag = item.filePath;
-                lvItems.Items.Add(lvi);
-            }
+                args.Item = lvi;
+            };
 
-            // 雙擊跳轉
+            // 標題排序 (VirtualMode)
+            int sortColumn = -1;
+            bool sortAsc = true;
+            lvItems.ColumnClick += (s, args) =>
+            {
+                if (args.Column == sortColumn)
+                    sortAsc = !sortAsc;
+                else
+                {
+                    sortColumn = args.Column;
+                    sortAsc = true;
+                }
+
+                allItems.Sort((a, b) =>
+                {
+                    int cmp = 0;
+                    switch (sortColumn)
+                    {
+                        case 0: cmp = string.Compare(a.fileName, b.fileName); break;
+                        case 1: cmp = a.x.CompareTo(b.x); break;
+                        case 2: cmp = a.y.CompareTo(b.y); break;
+                        case 3: cmp = a.attr1.CompareTo(b.attr1); break;
+                        case 4: cmp = string.Compare(a.region1, b.region1); break;
+                        case 5: cmp = string.Compare(a.pass1, b.pass1); break;
+                        case 6: cmp = a.attr2.CompareTo(b.attr2); break;
+                        case 7: cmp = string.Compare(a.region2, b.region2); break;
+                        case 8: cmp = string.Compare(a.pass2, b.pass2); break;
+                    }
+                    return sortAsc ? cmp : -cmp;
+                });
+                lvItems.Invalidate();
+            };
+
+            // 雙擊跳轉 (VirtualMode 使用 SelectedIndices)
             lvItems.DoubleClick += (s, args) =>
             {
-                if (lvItems.SelectedItems.Count > 0)
+                if (lvItems.SelectedIndices.Count > 0)
                 {
-                    var lvi = lvItems.SelectedItems[0];
-                    string filePath = lvi.Tag?.ToString();
-                    if (int.TryParse(lvi.SubItems[1].Text, out int cellX) &&
-                        int.TryParse(lvi.SubItems[2].Text, out int cellY) &&
-                        !string.IsNullOrEmpty(filePath) && _document.S32Files.TryGetValue(filePath, out S32Data s32Data))
+                    int idx = lvItems.SelectedIndices[0];
+                    var item = allItems[idx];
+                    if (_document.S32Files.TryGetValue(item.filePath, out S32Data s32Data))
                     {
                         // 計算世界座標並跳轉
                         int[] loc = s32Data.SegInfo.GetLoc(1.0);
-                        int layer1X = cellX * 2;
+                        int layer1X = item.x * 2;
                         int baseX = -24 * (layer1X / 2);
                         int baseY = 63 * 12 - 12 * (layer1X / 2);
-                        int worldX = loc[0] + baseX + layer1X * 24 + cellY * 24;
-                        int worldY = loc[1] + baseY + cellY * 12;
+                        int worldX = loc[0] + baseX + layer1X * 24 + item.y * 24;
+                        int worldY = loc[1] + baseY + item.y * 12;
 
                         _viewState.ScrollX = worldX - _mapViewerControl.Width / 2;
                         _viewState.ScrollY = worldY - _mapViewerControl.Height / 2;
                         RenderS32Map();
-                        this.toolStripStatusLabel1.Text = $"已跳轉到 {Path.GetFileName(filePath)} ({cellX},{cellY})";
+                        this.toolStripStatusLabel1.Text = $"已跳轉到 {item.fileName} ({item.x},{item.y})";
                     }
                 }
             };
@@ -21521,6 +21562,7 @@ namespace L1FlyMapViewer
             lvStats.Columns.Add("不可通行", 80);
             lvStats.Columns.Add("總計", 80);
 
+            lvStats.BeginUpdate();
             foreach (var stat in s32Stats)
             {
                 var item = new ListViewItem(stat.fileName);
@@ -21531,6 +21573,7 @@ namespace L1FlyMapViewer
                 item.Tag = stat.filePath;
                 lvStats.Items.Add(item);
             }
+            lvStats.EndUpdate();
 
             int totalSafe = s32Stats.Sum(x => x.safeCount);
             int totalCombat = s32Stats.Sum(x => x.combatCount);
@@ -21546,7 +21589,7 @@ namespace L1FlyMapViewer
             tabControl.TabPages.Add(tabStats);
 
             resultForm.Controls.Add(tabControl);
-            resultForm.ShowDialog();
+            resultForm.Show(this); // 非模態視窗
         }
 
         // 查看與編輯第四層（物件）資料
