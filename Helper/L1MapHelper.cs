@@ -540,7 +540,12 @@ namespace L1MapViewer.Helper {
                     L1ZoneArea pZoneArea = mapDescribe.mZoneAreaList[0];
                     int n;
                     if (int.TryParse(pZoneArea.szName, out n)) {
-                        szDescribe = Share.Zone3descList[n]; //是數字
+                        // 確保索引在有效範圍內
+                        if (n >= 0 && n < Share.Zone3descList.Count) {
+                            szDescribe = Share.Zone3descList[n]; //是數字
+                        } else {
+                            szDescribe = pZoneArea.szName; // 索引超出範圍，直接使用名稱
+                        }
                     } else {
                         szDescribe = pZoneArea.szName; //不是數字
                     }
@@ -548,7 +553,12 @@ namespace L1MapViewer.Helper {
                     L1ZoneArea pZoneArea = mapDescribe.mZoneAreaList[mapDescribe.mZoneAreaList.Count - 1];
                     int n;
                     if (int.TryParse(pZoneArea.szName, out n)) {
-                        szDescribe = Share.Zone3descList[n]; //是數字
+                        // 確保索引在有效範圍內
+                        if (n >= 0 && n < Share.Zone3descList.Count) {
+                            szDescribe = Share.Zone3descList[n]; //是數字
+                        } else {
+                            szDescribe = pZoneArea.szName; // 索引超出範圍，直接使用名稱
+                        }
                     } else {
                         szDescribe = pZoneArea.szName; //不是數字
                     }
