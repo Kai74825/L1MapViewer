@@ -16726,6 +16726,25 @@ namespace L1FlyMapViewer
                                 selectedLayer1Cells.Add((layer1GlobalX + 1, layer1GlobalY));
                             }
 
+                            // 收集選取區域內的 L5 ObjectIndex（作為額外的群組 ID）
+                            var l5GroupIds = new HashSet<(string s32Path, int groupId)>();
+                            foreach (var s32Data in s32FilesSnapshot.Values)
+                            {
+                                int segStartX = s32Data.SegInfo.nLinBeginX;
+                                int segStartY = s32Data.SegInfo.nLinBeginY;
+
+                                foreach (var item5 in s32Data.Layer5)
+                                {
+                                    int layer1GlobalX = segStartX * 2 + item5.X;
+                                    int layer1GlobalY = segStartY + item5.Y;
+
+                                    if (selectedLayer1Cells.Contains((layer1GlobalX, layer1GlobalY)))
+                                    {
+                                        l5GroupIds.Add((s32Data.FilePath, item5.ObjectIndex));
+                                    }
+                                }
+                            }
+
                             foreach (var s32Data in s32FilesSnapshot.Values)
                             {
                                 int segStartX = s32Data.SegInfo.nLinBeginX;
@@ -16736,7 +16755,11 @@ namespace L1FlyMapViewer
                                     int layer1GlobalX = segStartX * 2 + obj.X;
                                     int layer1GlobalY = segStartY + obj.Y;
 
-                                    if (selectedLayer1Cells.Contains((layer1GlobalX, layer1GlobalY)))
+                                    // 檢查 L4 物件是否在選取區域內，或其 GroupId 在 L5 中被參照
+                                    bool inSelectedArea = selectedLayer1Cells.Contains((layer1GlobalX, layer1GlobalY));
+                                    bool referencedByL5 = l5GroupIds.Contains((s32Data.FilePath, obj.GroupId));
+
+                                    if (inSelectedArea || referencedByL5)
                                     {
                                         var key = (s32Data.FilePath, obj.GroupId);
                                         if (!groupsByS32.ContainsKey(key))
@@ -16770,6 +16793,7 @@ namespace L1FlyMapViewer
                                 int segStartX = s32Data.SegInfo.nLinBeginX;
                                 int segStartY = s32Data.SegInfo.nLinBeginY;
 
+                                // 從 L4 物件收集群組
                                 foreach (var obj in s32Data.Layer4)
                                 {
                                     int layer1GlobalX = segStartX * 2 + obj.X;
@@ -16778,6 +16802,18 @@ namespace L1FlyMapViewer
                                     if (selectedLayer1Cells.Contains((layer1GlobalX, layer1GlobalY)))
                                     {
                                         matchedKeys.Add((s32Data.FilePath, obj.GroupId));
+                                    }
+                                }
+
+                                // 從 L5 ObjectIndex 收集群組
+                                foreach (var item5 in s32Data.Layer5)
+                                {
+                                    int layer1GlobalX = segStartX * 2 + item5.X;
+                                    int layer1GlobalY = segStartY + item5.Y;
+
+                                    if (selectedLayer1Cells.Contains((layer1GlobalX, layer1GlobalY)))
+                                    {
+                                        matchedKeys.Add((s32Data.FilePath, item5.ObjectIndex));
                                     }
                                 }
                             }
