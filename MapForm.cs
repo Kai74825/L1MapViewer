@@ -12906,9 +12906,15 @@ namespace L1FlyMapViewer
                                         dialog.SelectedS32.Layer5.Add(newItem);
                                         dialog.SelectedS32.IsModified = true;
 
-                                        // 從 ListView 移除
-                                        listView.Items.Remove(selectedItem);
-                                        countLabel.Text = $"此格數量: {listView.Items.Count}";
+                                        RenderS32Map();
+
+                                        // 關閉當前對話框並重新開啟以刷新 L5 列表
+                                        if (panel.Parent?.Parent is Form parentForm)
+                                        {
+                                            parentForm.Close();
+                                            ShowCellLayersDialog(x, y);
+                                        }
+                                        return;
                                     }
                                     else
                                     {
