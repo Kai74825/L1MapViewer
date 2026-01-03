@@ -566,10 +566,16 @@ namespace L1FlyMapViewer
                 AnalyzeLayer3Attributes();
             }
             // Ctrl+C: 複製選取區域
-            else if (e.Control && e.KeyCode == Keys.C)
+            else if (e.Control && e.KeyCode == Keys.C && !e.Shift)
             {
                 e.Handled = true;
                 CopySelectedCells();
+            }
+            // Ctrl+Shift+C: 查看剪貼簿內容
+            else if (e.Control && e.Shift && e.KeyCode == Keys.C)
+            {
+                e.Handled = true;
+                ShowClipboardViewer();
             }
             // Ctrl+V: 貼上選取區域
             else if (e.Control && e.KeyCode == Keys.V)
@@ -853,7 +859,7 @@ namespace L1FlyMapViewer
             _editState.SourceMapId = _document.MapId;
             _editState.CopySourceOrigin = new Point(minGlobalX, minGlobalY);  // 記錄複製時的原點
 
-            // 複製 Layer2 和 Layer5-8 資料（從所有涉及的 S32 收集，根據設定）
+            // 複製 Layer2 和 Layer5-8 資料（從所有 S32 收集落在選取範圍內的項目）
             _editState.Layer2Clipboard.Clear();
             _editState.Layer5Clipboard.Clear();
             _editState.Layer6Clipboard.Clear();
@@ -861,28 +867,55 @@ namespace L1FlyMapViewer
             _editState.Layer8Clipboard.Clear();
             bool copyLayer2 = copySettingLayer2;
 
-            var processedS32 = new HashSet<S32Data>();
+            // 建立選取格子的全域 Layer1 座標集合（用於 Layer2 跨區塊搜索）
+            var selectedGlobalL1Cells = new HashSet<(int x, int y)>();
             foreach (var cell in selectedCells)
             {
-                if (!processedS32.Contains(cell.S32Data))
+                int globalX = cell.S32Data.SegInfo.nLinBeginX * 2 + cell.LocalX;
+                int globalY = cell.S32Data.SegInfo.nLinBeginY + cell.LocalY;
+                selectedGlobalL1Cells.Add((globalX, globalY));
+                // Layer2 項目可能落在 X 或 X+1 的位置
+                selectedGlobalL1Cells.Add((globalX + 1, globalY));
+            }
+
+            // Layer2：遍歷所有 S32 檔案，複製座標落在選取範圍內的項目
+            if (copyLayer2)
+            {
+                foreach (var s32Data in _document.S32Files.Values)
                 {
-                    processedS32.Add(cell.S32Data);
-                    // Layer2
-                    if (copyLayer2)
+                    if (s32Data.Layer2.Count == 0) continue;
+
+                    int s32StartX = s32Data.SegInfo.nLinBeginX * 2;
+                    int s32StartY = s32Data.SegInfo.nLinBeginY;
+
+                    foreach (var item in s32Data.Layer2)
                     {
-                        foreach (var item in cell.S32Data.Layer2)
+                        // 計算 Layer2 項目的全域座標
+                        int itemGlobalX = s32StartX + item.X;
+                        int itemGlobalY = s32StartY + item.Y;
+
+                        // 檢查是否落在選取範圍內
+                        if (selectedGlobalL1Cells.Contains((itemGlobalX, itemGlobalY)) ||
+                            selectedGlobalL1Cells.Contains((itemGlobalX - 1, itemGlobalY)))
                         {
-                            // 避免重複加入
-                            if (!_editState.Layer2Clipboard.Any(l => l.X == item.X && l.Y == item.Y && l.TileId == item.TileId))
+                            // 計算相對於複製原點的座標
+                            int relativeX = itemGlobalX - minGlobalX;
+                            int relativeY = itemGlobalY - minGlobalY;
+
+                            // 避免重複加入（相對座標應為非負值）
+                            if (relativeX >= 0 && relativeY >= 0 && relativeX <= 255 && relativeY <= 255)
                             {
-                                _editState.Layer2Clipboard.Add(new Layer2Item
+                                if (!_editState.Layer2Clipboard.Any(l => l.X == relativeX && l.Y == relativeY && l.TileId == item.TileId))
                                 {
-                                    X = item.X,
-                                    Y = item.Y,
-                                    IndexId = item.IndexId,
-                                    TileId = item.TileId,
-                                    UK = item.UK
-                                });
+                                    _editState.Layer2Clipboard.Add(new Layer2Item
+                                    {
+                                        X = (byte)relativeX,
+                                        Y = (byte)relativeY,
+                                        IndexId = item.IndexId,
+                                        TileId = item.TileId,
+                                        UK = item.UK
+                                    });
+                                }
                             }
                         }
                     }
@@ -1039,6 +1072,217 @@ namespace L1FlyMapViewer
             copyRegionBounds = new Rectangle();
             _editState.SelectedCells.Clear();
             _mapViewerControl.Refresh();
+        }
+
+        // 查看剪貼簿按鈕點擊
+        private void btnViewClipboard_Click(object sender, EventArgs e)
+        {
+            ShowClipboardViewer();
+        }
+
+        // 顯示剪貼簿內容
+        private void ShowClipboardViewer()
+        {
+            bool hasAnyData = _editState.CellClipboard.Count > 0 ||
+                              _editState.Layer2Clipboard.Count > 0 ||
+                              _editState.Layer5Clipboard.Count > 0 ||
+                              _editState.Layer6Clipboard.Count > 0 ||
+                              _editState.Layer7Clipboard.Count > 0 ||
+                              _editState.Layer8Clipboard.Count > 0;
+
+            if (!hasAnyData)
+            {
+                MessageBox.Show("剪貼簿是空的。\n\n請先選取區域後按 Ctrl+C 複製。", "剪貼簿", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            Form viewer = new Form
+            {
+                Text = "剪貼簿內容",
+                Size = new Size(700, 500),
+                StartPosition = FormStartPosition.CenterParent,
+                MinimizeBox = false,
+                MaximizeBox = true,
+                ShowInTaskbar = false
+            };
+
+            TabControl tabs = new TabControl { Dock = DockStyle.Fill };
+
+            // 摘要頁籤
+            TabPage summaryTab = new TabPage("摘要");
+            TextBox summaryBox = new TextBox
+            {
+                Multiline = true,
+                ReadOnly = true,
+                Dock = DockStyle.Fill,
+                ScrollBars = ScrollBars.Vertical,
+                Font = new Font("Consolas", 10)
+            };
+
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine($"=== 剪貼簿摘要 ===");
+            sb.AppendLine($"來源地圖: {_editState.SourceMapId}");
+            sb.AppendLine($"複製原點: ({_editState.CopySourceOrigin.X}, {_editState.CopySourceOrigin.Y})");
+            sb.AppendLine();
+            sb.AppendLine($"Layer1 格子: {_editState.CellClipboard.Count(c => c.Layer1Cell1 != null || c.Layer1Cell2 != null)}");
+            sb.AppendLine($"Layer2 項目: {_editState.Layer2Clipboard.Count}");
+            sb.AppendLine($"Layer3 屬性: {_editState.CellClipboard.Count(c => c.Layer3Attr != null)}");
+            sb.AppendLine($"Layer4 物件: {_editState.CellClipboard.Sum(c => c.Layer4Objects?.Count ?? 0)}");
+            sb.AppendLine($"Layer5 項目: {_editState.Layer5Clipboard.Count}");
+            sb.AppendLine($"Layer6 TileId: {_editState.Layer6Clipboard.Count}");
+            sb.AppendLine($"Layer7 傳送點: {_editState.Layer7Clipboard.Count}");
+            sb.AppendLine($"Layer8 特效: {_editState.Layer8Clipboard.Count}");
+            summaryBox.Text = sb.ToString();
+            summaryTab.Controls.Add(summaryBox);
+            tabs.TabPages.Add(summaryTab);
+
+            // Layer2 頁籤
+            if (_editState.Layer2Clipboard.Count > 0)
+            {
+                TabPage l2Tab = new TabPage($"Layer2 ({_editState.Layer2Clipboard.Count})");
+                ListView lv2 = new ListView
+                {
+                    Dock = DockStyle.Fill,
+                    View = View.Details,
+                    FullRowSelect = true,
+                    GridLines = true
+                };
+                lv2.Columns.Add("相對X", 60);
+                lv2.Columns.Add("相對Y", 60);
+                lv2.Columns.Add("TileId", 80);
+                lv2.Columns.Add("IndexId", 60);
+
+                foreach (var item in _editState.Layer2Clipboard)
+                {
+                    var lvi = new ListViewItem(item.X.ToString());
+                    lvi.SubItems.Add(item.Y.ToString());
+                    lvi.SubItems.Add(item.TileId.ToString());
+                    lvi.SubItems.Add(item.IndexId.ToString());
+                    lv2.Items.Add(lvi);
+                }
+                l2Tab.Controls.Add(lv2);
+                tabs.TabPages.Add(l2Tab);
+            }
+
+            // Layer4 頁籤
+            var allL4 = _editState.CellClipboard.SelectMany(c => c.Layer4Objects ?? new List<CopiedObjectTile>()).ToList();
+            if (allL4.Count > 0)
+            {
+                TabPage l4Tab = new TabPage($"Layer4 ({allL4.Count})");
+                ListView lv4 = new ListView
+                {
+                    Dock = DockStyle.Fill,
+                    View = View.Details,
+                    FullRowSelect = true,
+                    GridLines = true
+                };
+                lv4.Columns.Add("相對X", 60);
+                lv4.Columns.Add("相對Y", 60);
+                lv4.Columns.Add("GroupId", 70);
+                lv4.Columns.Add("Layer", 50);
+                lv4.Columns.Add("TileId", 80);
+
+                foreach (var obj in allL4)
+                {
+                    var lvi = new ListViewItem(obj.RelativeX.ToString());
+                    lvi.SubItems.Add(obj.RelativeY.ToString());
+                    lvi.SubItems.Add(obj.GroupId.ToString());
+                    lvi.SubItems.Add(obj.Layer.ToString());
+                    lvi.SubItems.Add(obj.TileId.ToString());
+                    lv4.Items.Add(lvi);
+                }
+                l4Tab.Controls.Add(lv4);
+                tabs.TabPages.Add(l4Tab);
+            }
+
+            // Layer5 頁籤
+            if (_editState.Layer5Clipboard.Count > 0)
+            {
+                TabPage l5Tab = new TabPage($"Layer5 ({_editState.Layer5Clipboard.Count})");
+                ListView lv5 = new ListView
+                {
+                    Dock = DockStyle.Fill,
+                    View = View.Details,
+                    FullRowSelect = true,
+                    GridLines = true
+                };
+                lv5.Columns.Add("相對X", 60);
+                lv5.Columns.Add("相對Y", 60);
+                lv5.Columns.Add("ObjectIndex", 90);
+                lv5.Columns.Add("Type", 50);
+
+                foreach (var item in _editState.Layer5Clipboard)
+                {
+                    var lvi = new ListViewItem(item.X.ToString());
+                    lvi.SubItems.Add(item.Y.ToString());
+                    lvi.SubItems.Add(item.ObjectIndex.ToString());
+                    lvi.SubItems.Add(item.Type.ToString());
+                    lv5.Items.Add(lvi);
+                }
+                l5Tab.Controls.Add(lv5);
+                tabs.TabPages.Add(l5Tab);
+            }
+
+            // Layer7 頁籤
+            if (_editState.Layer7Clipboard.Count > 0)
+            {
+                TabPage l7Tab = new TabPage($"Layer7 ({_editState.Layer7Clipboard.Count})");
+                ListView lv7 = new ListView
+                {
+                    Dock = DockStyle.Fill,
+                    View = View.Details,
+                    FullRowSelect = true,
+                    GridLines = true
+                };
+                lv7.Columns.Add("相對X", 60);
+                lv7.Columns.Add("相對Y", 60);
+                lv7.Columns.Add("TargetMapId", 90);
+                lv7.Columns.Add("PortalId", 70);
+                lv7.Columns.Add("Name", 100);
+
+                foreach (var item in _editState.Layer7Clipboard)
+                {
+                    var lvi = new ListViewItem(item.X.ToString());
+                    lvi.SubItems.Add(item.Y.ToString());
+                    lvi.SubItems.Add(item.TargetMapId.ToString());
+                    lvi.SubItems.Add(item.PortalId.ToString());
+                    lvi.SubItems.Add(item.Name ?? "");
+                    lv7.Items.Add(lvi);
+                }
+                l7Tab.Controls.Add(lv7);
+                tabs.TabPages.Add(l7Tab);
+            }
+
+            // Layer8 頁籤
+            if (_editState.Layer8Clipboard.Count > 0)
+            {
+                TabPage l8Tab = new TabPage($"Layer8 ({_editState.Layer8Clipboard.Count})");
+                ListView lv8 = new ListView
+                {
+                    Dock = DockStyle.Fill,
+                    View = View.Details,
+                    FullRowSelect = true,
+                    GridLines = true
+                };
+                lv8.Columns.Add("相對X", 60);
+                lv8.Columns.Add("相對Y", 60);
+                lv8.Columns.Add("SprId", 80);
+                lv8.Columns.Add("ExtData", 80);
+
+                foreach (var item in _editState.Layer8Clipboard)
+                {
+                    var lvi = new ListViewItem(item.X.ToString());
+                    lvi.SubItems.Add(item.Y.ToString());
+                    lvi.SubItems.Add(item.SprId.ToString());
+                    lvi.SubItems.Add(item.ExtendedData.ToString());
+                    lv8.Items.Add(lvi);
+                }
+                l8Tab.Controls.Add(lv8);
+                tabs.TabPages.Add(l8Tab);
+            }
+
+            viewer.Controls.Add(tabs);
+            viewer.ShowDialog(this);
         }
 
         // 貼上選取區域
@@ -1255,29 +1499,48 @@ namespace L1FlyMapViewer
                     affectedS32Set.Add(targetS32);
             }
 
-            foreach (var targetS32 in affectedS32Set)
+            // Layer2 - 貼圖層（需要計算正確的目標座標）- 根據設定
+            if (copySettingLayer2 && _editState.Layer2Clipboard.Count > 0)
             {
-                // 合併 Layer2（加入不存在的項目）- 根據設定
-                if (copySettingLayer2 && _editState.Layer2Clipboard.Count > 0)
+                foreach (var item in _editState.Layer2Clipboard)
                 {
-                    foreach (var item in _editState.Layer2Clipboard)
+                    // item.X, item.Y 是相對座標（相對於複製原點的 Layer1 座標）
+                    int targetGlobalL1X = pasteOriginX + item.X;
+                    int targetGlobalY = pasteOriginY + item.Y;
+
+                    // 找到目標 S32
+                    int targetGameX = targetGlobalL1X / 2;
+                    int targetGameY = targetGlobalY;
+                    S32Data l2TargetS32 = GetS32DataByGameCoords(targetGameX, targetGameY);
+                    if (l2TargetS32 == null) continue;
+
+                    // 計算目標 S32 內的局部座標
+                    int localL1X = targetGlobalL1X - l2TargetS32.SegInfo.nLinBeginX * 2;
+                    int localY = targetGlobalY - l2TargetS32.SegInfo.nLinBeginY;
+
+                    // 檢查座標是否在有效範圍內 (Layer2 X 可達 255, Y 範圍 0-127)
+                    if (localL1X < 0 || localL1X > 255 || localY < 0 || localY >= 128)
+                        continue;
+
+                    // 檢查是否已存在
+                    if (!l2TargetS32.Layer2.Any(l => l.X == localL1X && l.Y == localY && l.TileId == item.TileId))
                     {
-                        if (!targetS32.Layer2.Any(l => l.X == item.X && l.Y == item.Y && l.TileId == item.TileId))
+                        l2TargetS32.Layer2.Add(new Layer2Item
                         {
-                            targetS32.Layer2.Add(new Layer2Item
-                            {
-                                X = item.X,
-                                Y = item.Y,
-                                IndexId = item.IndexId,
-                                TileId = item.TileId,
-                                UK = item.UK
-                            });
-                            layer2AddedCount++;
-                            targetS32.IsModified = true;
-                        }
+                            X = (byte)localL1X,
+                            Y = (byte)localY,
+                            IndexId = item.IndexId,
+                            TileId = item.TileId,
+                            UK = item.UK
+                        });
+                        layer2AddedCount++;
+                        l2TargetS32.IsModified = true;
                     }
                 }
+            }
 
+            foreach (var targetS32 in affectedS32Set)
+            {
                 // Layer6 - 使用的 TilId（合併不重複的）- 根據設定
                 if (copySettingLayer6to8)
                 {

@@ -89,6 +89,7 @@ namespace L1FlyMapViewer
         private Button btnToolCheckL7;
         private Button btnToolCheckL8;
         private Button btnEnableVisibleL8;
+        private Button btnViewClipboard;
         private ToolTip toolTip1;
 
         // 中間 TabControl
@@ -239,6 +240,7 @@ namespace L1FlyMapViewer
             this.btnToolCheckL7 = new Button();
             this.btnToolCheckL8 = new Button();
             this.btnEnableVisibleL8 = new Button();
+            this.btnViewClipboard = new Button();
             this.toolTip1 = new ToolTip();
 
             // 中間 TabControl
@@ -1427,6 +1429,7 @@ namespace L1FlyMapViewer
             this.toolbarPanel2.Controls.Add(this.btnToolCheckL7);
             this.toolbarPanel2.Controls.Add(this.btnToolCheckL8);
             this.toolbarPanel2.Controls.Add(this.btnEnableVisibleL8);
+            this.toolbarPanel2.Controls.Add(this.btnViewClipboard);
             this.toolbarPanel2.Dock = DockStyle.Left;
             this.toolbarPanel2.Location = new Point(40, 0);
             this.toolbarPanel2.Name = "toolbarPanel2";
@@ -1697,6 +1700,18 @@ namespace L1FlyMapViewer
             this.btnEnableVisibleL8.UseVisualStyleBackColor = true;
             this.toolTip1.SetToolTip(this.btnEnableVisibleL8, "啟用畫面中所有可見的 L8 特效");
             this.btnEnableVisibleL8.Click += new System.EventHandler(this.btnEnableVisibleL8_Click);
+
+            //
+            // btnViewClipboard
+            //
+            this.btnViewClipboard.Location = new Point(2, 340);
+            this.btnViewClipboard.Name = "btnViewClipboard";
+            this.btnViewClipboard.Size = new Size(34, 34);
+            this.btnViewClipboard.TabIndex = 16;
+            this.btnViewClipboard.Text = "剪貼";
+            this.btnViewClipboard.UseVisualStyleBackColor = true;
+            this.toolTip1.SetToolTip(this.btnViewClipboard, "查看剪貼簿內容 (Ctrl+Shift+C)");
+            this.btnViewClipboard.Click += new System.EventHandler(this.btnViewClipboard_Click);
 
             //
             // MapForm
