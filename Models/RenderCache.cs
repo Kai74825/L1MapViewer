@@ -20,10 +20,7 @@ namespace L1MapViewer.Models
         /// </summary>
         public Bitmap ViewportBitmap { get; set; }
 
-        /// <summary>
-        /// 小地圖完整渲染 Bitmap
-        /// </summary>
-        public Bitmap MiniMapFullBitmap { get; set; }
+        // 小地圖 Bitmap 已移至 MiniMapControl 內部管理
 
         /// <summary>
         /// Layer8 SPR 動畫快取 - key: sprId, value: frames
@@ -77,14 +74,7 @@ namespace L1MapViewer.Models
             }
         }
 
-        /// <summary>
-        /// 清除小地圖 Bitmap
-        /// </summary>
-        public void ClearMiniMapBitmap()
-        {
-            MiniMapFullBitmap?.Dispose();
-            MiniMapFullBitmap = null;
-        }
+        // ClearMiniMapBitmap 已移除 - 小地圖由 MiniMapControl 管理
 
         /// <summary>
         /// 清除 S32 區塊快取
@@ -120,7 +110,6 @@ namespace L1MapViewer.Models
         public void ClearAll()
         {
             ClearViewportBitmap();
-            ClearMiniMapBitmap();
             ClearS32BlockCache();
             ClearLayer8Cache();
             TileDataCache.Clear();

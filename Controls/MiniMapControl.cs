@@ -1,7 +1,9 @@
 using System;
 using System.ComponentModel;
 using System.Drawing;
+using System.Threading.Tasks;
 using System.Windows.Forms;
+using L1MapViewer.Helper;
 using L1MapViewer.Models;
 using L1MapViewer.Rendering;
 
@@ -19,6 +21,7 @@ namespace L1MapViewer.Controls
         private Bitmap _miniMapBitmap;
 
         private bool _isDragging;
+        private bool _isRendering;
         private MapDocument _document;
 
         #endregion
@@ -66,6 +69,46 @@ namespace L1MapViewer.Controls
         /// </summary>
         public event EventHandler<Point> NavigateRequested;
 
+        /// <summary>
+        /// 右鍵查詢 S32 事件
+        /// </summary>
+        public event EventHandler<S32QueryEventArgs> S32RightClicked;
+
+        /// <summary>
+        /// 渲染開始事件
+        /// </summary>
+        public event EventHandler RenderStarted;
+
+        /// <summary>
+        /// 渲染完成事件
+        /// </summary>
+        public event EventHandler RenderCompleted;
+
+        #endregion
+
+        #region 事件參數類別
+
+        /// <summary>
+        /// S32 查詢事件參數
+        /// </summary>
+        public class S32QueryEventArgs : EventArgs
+        {
+            public int WorldX { get; }
+            public int WorldY { get; }
+            public int GameX { get; }
+            public int GameY { get; }
+            public string S32FileName { get; }
+
+            public S32QueryEventArgs(int worldX, int worldY, int gameX, int gameY, string s32FileName)
+            {
+                WorldX = worldX;
+                WorldY = worldY;
+                GameX = gameX;
+                GameY = gameY;
+                S32FileName = s32FileName;
+            }
+        }
+
         #endregion
 
         #region 建構函式
@@ -93,12 +136,14 @@ namespace L1MapViewer.Controls
         {
             this.Size = new Size(MiniMapSize, MiniMapSize);
             this.BackColor = Color.Black;
+            this.TabStop = false; // 不搶奪鍵盤焦點
 
             _pictureBox = new PictureBox
             {
                 Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.Black
+                BackColor = Color.Black,
+                TabStop = false // 不搶奪鍵盤焦點
             };
 
             _pictureBox.MouseDown += PictureBox_MouseDown;
@@ -114,7 +159,7 @@ namespace L1MapViewer.Controls
         #region 公開方法
 
         /// <summary>
-        /// 更新小地圖
+        /// 更新小地圖（同步版本）
         /// </summary>
         public void UpdateMiniMap(MapDocument document)
         {
@@ -129,10 +174,83 @@ namespace L1MapViewer.Controls
         }
 
         /// <summary>
+        /// 更新小地圖（異步版本，先顯示佔位圖）
+        /// </summary>
+        public void UpdateMiniMapAsync(MapDocument document)
+        {
+            _document = document;
+            if (document == null) return;
+
+            if (_isRendering) return;
+            _isRendering = true;
+
+            // 先顯示佔位圖
+            ShowPlaceholder();
+            RenderStarted?.Invoke(this, EventArgs.Empty);
+
+            // 背景渲染
+            Task.Run(() =>
+            {
+                try
+                {
+                    var bitmap = _renderingCore.RenderMiniMap(document, MiniMapSize);
+
+                    this.BeginInvoke((MethodInvoker)delegate
+                    {
+                        _miniMapBitmap?.Dispose();
+                        _miniMapBitmap = bitmap;
+                        _isRendering = false;
+                        _pictureBox.Invalidate();
+                        RenderCompleted?.Invoke(this, EventArgs.Empty);
+                    });
+                }
+                catch
+                {
+                    _isRendering = false;
+                }
+            });
+        }
+
+        /// <summary>
+        /// 顯示載入中佔位圖
+        /// </summary>
+        public void ShowPlaceholder(string text = "小地圖繪製中...")
+        {
+            var placeholder = new Bitmap(MiniMapSize, MiniMapSize);
+            using (var g = Graphics.FromImage(placeholder))
+            {
+                g.Clear(Color.FromArgb(30, 30, 30));
+                using (var font = new Font("Microsoft JhengHei", 12))
+                using (var brush = new SolidBrush(Color.Gray))
+                {
+                    var size = g.MeasureString(text, font);
+                    g.DrawString(text, font, brush,
+                        (MiniMapSize - size.Width) / 2,
+                        (MiniMapSize - size.Height) / 2);
+                }
+            }
+
+            _miniMapBitmap?.Dispose();
+            _miniMapBitmap = placeholder;
+            _pictureBox.Invalidate();
+        }
+
+        /// <summary>
         /// 重繪視窗位置框
         /// </summary>
         public void RefreshViewportRect()
         {
+            _pictureBox.Invalidate();
+        }
+
+        /// <summary>
+        /// 清除小地圖
+        /// </summary>
+        public void Clear()
+        {
+            _miniMapBitmap?.Dispose();
+            _miniMapBitmap = null;
+            _document = null;
             _pictureBox.Invalidate();
         }
 
@@ -146,6 +264,10 @@ namespace L1MapViewer.Controls
             {
                 _isDragging = true;
                 NavigateToPosition(e.Location);
+            }
+            else if (e.Button == MouseButtons.Right)
+            {
+                HandleRightClick(e.Location);
             }
         }
 
@@ -193,6 +315,46 @@ namespace L1MapViewer.Controls
 
             // 如果有關聯的 MapViewer，直接導航
             MapViewer?.ScrollTo(worldX, worldY);
+        }
+
+        private void HandleRightClick(Point mouseLocation)
+        {
+            if (ViewState == null || _document == null) return;
+
+            // 計算小地圖的實際顯示區域
+            float scaleX = (float)this.Width / ViewState.MapWidth;
+            float scaleY = (float)this.Height / ViewState.MapHeight;
+            float scale = Math.Min(scaleX, scaleY);
+
+            int scaledWidth = (int)(ViewState.MapWidth * scale);
+            int scaledHeight = (int)(ViewState.MapHeight * scale);
+
+            int offsetX = (this.Width - scaledWidth) / 2;
+            int offsetY = (this.Height - scaledHeight) / 2;
+
+            // 檢查是否在有效範圍內
+            int clickX = mouseLocation.X - offsetX;
+            int clickY = mouseLocation.Y - offsetY;
+
+            if (clickX < 0 || clickY < 0 || clickX > scaledWidth || clickY > scaledHeight)
+                return;
+
+            // 轉換為世界座標
+            int worldX = (int)((float)clickX / scaledWidth * ViewState.MapWidth);
+            int worldY = (int)((float)clickY / scaledHeight * ViewState.MapHeight);
+
+            // 使用 L1MapHelper 轉換為遊戲座標
+            var linLoc = L1MapHelper.GetLinLocation(worldX, worldY);
+            if (linLoc == null) return;
+
+            // 計算 S32 檔案名稱
+            int blockX = ((linLoc.x - 0x7FFF) / 64) + 0x7FFF;
+            int blockY = ((linLoc.y - 0x7FFF) / 64) + 0x7FFF;
+            string s32FileName = $"{blockX:X4}{blockY:X4}.s32";
+
+            // 觸發事件
+            S32RightClicked?.Invoke(this, new S32QueryEventArgs(
+                worldX, worldY, linLoc.x, linLoc.y, s32FileName));
         }
 
         #endregion

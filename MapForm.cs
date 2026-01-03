@@ -82,10 +82,8 @@ namespace L1FlyMapViewer
         private Image originalS32Image;
         private double pendingS32ZoomLevel = 1.0;
 
-        // 小地圖完整渲染 Bitmap - 已移至 _renderCache
-
-        // 小地圖渲染器（與 CLI 共用邏輯）
-        private MiniMapRenderer _miniMapRenderer = new MiniMapRenderer();
+        // MiniMapControl（取代原本的 PictureBox 和渲染邏輯）
+        private L1MapViewer.Controls.MiniMapControl _miniMapControl;
 
         // 圖層切換防抖Timer
         private System.Windows.Forms.Timer renderDebounceTimer;
@@ -452,6 +450,9 @@ namespace L1FlyMapViewer
             _mapViewerControl.PaintOverlay += MapViewerControl_PaintOverlay;
             _mapViewerControl.CoordinateChanged += MapViewerControl_CoordinateChanged;
             _mapViewerControl.RenderCompleted += MapViewerControl_RenderCompleted;
+
+            // 設定 MiniMapControl（取代 miniMapPictureBox）
+            SetupMiniMapControl();
 
             // 拖曳移動視圖時更新小地圖（使用防抖避免過度更新）
             // 注意：現在使用中鍵拖曳移動視圖，不再使用 Panel AutoScroll
@@ -2907,13 +2908,6 @@ namespace L1FlyMapViewer
         // ===== 小地圖 =====
         // 小地圖尺寸常數
         private const int MINIMAP_SIZE = 400;
-
-        // 小地圖的縮放比例和偏移（快取計算結果）
-        private float _miniMapScale = 1.0f;
-        private int _miniMapOffsetX = 0;
-        private int _miniMapOffsetY = 0;
-        private readonly object _miniMapLock = new object();
-        private bool _miniMapRendering = false;  // 是否正在渲染中
 
         // 小地圖方法已移至 MapForm/MapForm.MiniMap.cs
 
