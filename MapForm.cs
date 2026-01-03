@@ -3893,22 +3893,14 @@ namespace L1FlyMapViewer
                 _document.S32Files.Remove(item.FilePath);
                 _checkedS32Files.Remove(item.FilePath);
 
-                // 從列表中移除
-                lstS32Files.Items.Remove(item);
-
                 // 刪除磁碟上的檔案
                 if (File.Exists(item.FilePath))
                 {
                     File.Delete(item.FilePath);
                 }
 
-                // 更新列表計數標籤
-                lblS32Files.Text = $"S32 檔案清單 ({lstS32Files.Items.Count})";
-
-                // 重新渲染
-                ClearS32BlockCache();
-                RenderS32Map();
-                UpdateMiniMap();
+                // 重新載入地圖（重新讀取所有 S32 檔案）
+                ReloadCurrentMap();
 
                 MessageBox.Show(
                     $"已刪除 [{fileName}]。",
@@ -8779,6 +8771,12 @@ namespace L1FlyMapViewer
             var screenLocation = _mapViewerControl.WorldToScreen(e.WorldLocation);
             var me = new MouseEventArgs(e.Button, 0, screenLocation.X, screenLocation.Y, e.Delta);
             s32PictureBox_MouseUp(sender, me);
+
+            // 如果不是拖曳操作，也觸發 Click 事件（處理格子點擊、右鍵選單等）
+            if (!_interaction.IsMainMapDragging && !_interaction.IsMiniMapDragging && !isSelectingRegion)
+            {
+                s32PictureBox_MouseClick(sender, me);
+            }
         }
 
         // MapViewerControl 繪製覆蓋層 - 繪製 L8 動畫、選取框、多邊形等
@@ -9072,6 +9070,33 @@ namespace L1FlyMapViewer
                 int x = result.CellX;
                 int y = result.CellY;
 
+                // 如果找到的是延伸區域的格子（超出正常 Layer1 範圍 0-127 x 0-63），
+                // 嘗試找另一個 S32 的正常範圍內的格子
+                if (x >= 128 || y >= 64)
+                {
+                    // 搜尋是否有其他 S32 的正常範圍包含這個世界座標
+                    var normalResult = FindCellInNormalRange(worldX, worldY);
+                    if (normalResult.Found)
+                    {
+                        // 使用正常範圍的結果
+                        s32Data = normalResult.S32Data;
+                        x = normalResult.CellX;
+                        y = normalResult.CellY;
+                    }
+                    else if (e.Button == MouseButtons.Right)
+                    {
+                        // 真正的延伸區域，顯示新增 S32 選單
+                        Struct.L1Map currentMap = Share.MapDataList[_document.MapId];
+                        ShowEmptyAreaContextMenu(e.Location, new Point(worldX, worldY), currentMap);
+                        return;
+                    }
+                    else
+                    {
+                        // 左鍵點擊延伸區域，不做任何處理
+                        return;
+                    }
+                }
+
                 // 設置當前選中的 S32 檔案
                 currentS32FileItem = new S32FileItem
                 {
@@ -9079,11 +9104,14 @@ namespace L1FlyMapViewer
                     SegInfo = s32Data.SegInfo
                 };
 
-                // 記錄選中的格子並更新狀態列顯示第三層屬性
+                // 記錄選中的格子並更新狀態列顯示第三層屬性（僅限正常範圍內的格子）
                 _editState.HighlightedS32Data = s32Data;
                 _editState.HighlightedCellX = x;
                 _editState.HighlightedCellY = y;
-                UpdateStatusBarWithLayer3Info(s32Data, x, y);
+                if (x < 128 && y < 64)
+                {
+                    UpdateStatusBarWithLayer3Info(s32Data, x, y);
+                }
 
                 // 區域編輯模式：右鍵變更選取區域的區域類型
                 if (currentRegionEditMode != RegionEditMode.None && e.Button == MouseButtons.Right)
@@ -9165,7 +9193,50 @@ namespace L1FlyMapViewer
                 menu.Items.Add(infoItem);
             }
 
-            menu.Show(pictureBox4, screenLocation);
+            menu.Show(_mapViewerControl, screenLocation);
+        }
+
+        // 在正常範圍內（0-127 x 0-63）搜尋格子，避免找到延伸區域的格子
+        private CellFinder.FindResult FindCellInNormalRange(int worldX, int worldY)
+        {
+            var result = new CellFinder.FindResult { Found = false };
+
+            foreach (var s32Data in _document.S32Files.Values)
+            {
+                int[] loc = s32Data.SegInfo.GetLoc(1.0);
+                int mx = loc[0];
+                int my = loc[1];
+
+                // 只搜尋正常範圍 (0-127 x 0-63)
+                for (int y = 0; y < 64; y++)
+                {
+                    for (int x = 0; x < 128; x++)
+                    {
+                        int localBaseX = -24 * (x / 2);
+                        int localBaseY = 63 * 12 - 12 * (x / 2);
+
+                        int cellX = mx + localBaseX + x * 24 + y * 24;
+                        int cellY = my + localBaseY + y * 12;
+
+                        // 檢查點是否在菱形內
+                        int centerX = cellX + 12;
+                        int centerY = cellY + 12;
+                        int dx = Math.Abs(worldX - centerX);
+                        int dy = Math.Abs(worldY - centerY);
+
+                        if (dx * 12 + dy * 12 <= 144) // 12 * 12 = 144
+                        {
+                            result.Found = true;
+                            result.S32Data = s32Data;
+                            result.CellX = x;
+                            result.CellY = y;
+                            return result;
+                        }
+                    }
+                }
+            }
+
+            return result;
         }
 
         // 估算點擊位置的 Block 座標
@@ -9225,6 +9296,14 @@ namespace L1FlyMapViewer
                 var s32Data = result.S32Data;
                 int x = result.CellX;
                 int y = result.CellY;
+
+                // 延伸區域（超出正常 Layer1 範圍 0-127 x 0-63）視為空白區域，觸發新增 S32
+                if (x >= 128 || y >= 64)
+                {
+                    Point adjustedLocation = new Point(worldX, worldY);
+                    TryCreateS32AtClickPosition(adjustedLocation, currentMap);
+                    return;
+                }
 
                 // 設置當前選中的 S32 檔案
                 currentS32FileItem = new S32FileItem
@@ -9441,11 +9520,8 @@ namespace L1FlyMapViewer
                 SegInfo = segInfo,
                 IsChecked = true
             };
-            int index = lstS32Files.Items.Add(item);
-            lstS32Files.SetItemChecked(index, true);
-
-            // 重新渲染地圖
-            RenderS32Map();
+            // 重新載入地圖（重新讀取所有 S32 檔案）
+            ReloadCurrentMap();
 
             this.toolStripStatusLabel1.Text = $"已新增 S32: {fileName}";
         }
@@ -10124,6 +10200,22 @@ namespace L1FlyMapViewer
                 var allImpassable = new ToolStripMenuItem($"整格 不可通行 ({cellCount} 格)");
                 allImpassable.Click += (s, ev) => SetSelectedCellsPassability(PassabilityTarget.All, false);
                 menu.Items.Add(allImpassable);
+            }
+
+            // 新增 S32 選項（在任何情況下都顯示，方便在延伸區新增 S32）
+            if (Share.MapDataList.ContainsKey(_document.MapId))
+            {
+                menu.Items.Add(new ToolStripSeparator());
+
+                // 將螢幕座標轉換為世界座標
+                var worldPoint = S32ScreenToWorld(location.X, location.Y);
+                var currentMap = Share.MapDataList[_document.MapId];
+                var (blockX, blockY) = EstimateBlockCoordinates(new Point(worldPoint.X, worldPoint.Y), currentMap);
+                string fileName = $"{blockX:X4}{blockY:X4}.s32".ToLower();
+
+                var addS32Item = new ToolStripMenuItem($"➕ 在此位置新增 S32 區塊 ({fileName})...");
+                addS32Item.Click += (s, e) => TryCreateS32AtClickPosition(new Point(worldPoint.X, worldPoint.Y), currentMap);
+                menu.Items.Add(addS32Item);
             }
 
             menu.Show(_mapViewerControl, location);
@@ -24837,11 +24929,8 @@ namespace L1FlyMapViewer
                     SegInfo = segInfo,
                     IsChecked = true
                 };
-                int index = lstS32Files.Items.Add(item);
-                lstS32Files.SetItemChecked(index, true);
-
-                // 重新渲染地圖
-                RenderS32Map();
+                // 重新載入地圖（重新讀取所有 S32 檔案）
+                ReloadCurrentMap();
 
                 MessageBox.Show($"S32 區塊已新增！\n\n檔案: {fileName}", "完成", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.toolStripStatusLabel1.Text = $"已新增 S32: {fileName}";
