@@ -94,7 +94,7 @@ namespace L1FlyMapViewer
         }
 
         /// <summary>
-        /// 更新小地圖
+        /// 更新小地圖（重新渲染底圖，僅在地圖內容變更時呼叫）
         /// </summary>
         private void UpdateMiniMap()
         {
@@ -108,6 +108,14 @@ namespace L1FlyMapViewer
 
             // 使用異步渲染
             _miniMapControl.UpdateMiniMapAsync(_document);
+        }
+
+        /// <summary>
+        /// 只更新小地圖的視窗紅框（捲動/縮放時呼叫，不重新渲染底圖）
+        /// </summary>
+        private void UpdateMiniMapViewportRect()
+        {
+            _miniMapControl?.RefreshViewportRect();
         }
 
         /// <summary>

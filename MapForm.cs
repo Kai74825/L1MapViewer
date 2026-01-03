@@ -1941,44 +1941,92 @@ namespace L1FlyMapViewer
                                                  worldBottom - worldTop + 3072);
             var candidateFiles = GetS32FilesInRect(queryRect);
 
-            // 只遍歷候選的 S32 檔案
+            // 使用字典來追蹤每個遊戲座標只選取一次，優先使用 currentS32Data
+            var selectedCoords = new Dictionary<(int gameX, int gameY), SelectedCell>();
+
+            // 先處理 currentS32Data（如果有的話）
+            if (currentS32Data != null)
+            {
+                int s32MinGameX = currentS32Data.SegInfo.nLinBeginX;
+                int s32MaxGameX = currentS32Data.SegInfo.nLinBeginX + 63;  // 標準 64 格範圍
+                int s32MinGameY = currentS32Data.SegInfo.nLinBeginY;
+                int s32MaxGameY = currentS32Data.SegInfo.nLinBeginY + 63;
+
+                // 檢查是否有交集
+                if (!(s32MaxGameX < minGameX || s32MinGameX > maxGameX ||
+                      s32MaxGameY < minGameY || s32MinGameY > maxGameY))
+                {
+                    int localMinX3 = Math.Max(0, minGameX - currentS32Data.SegInfo.nLinBeginX);
+                    int localMaxX3 = Math.Min(63, maxGameX - currentS32Data.SegInfo.nLinBeginX);
+                    int localMinY = Math.Max(0, minGameY - currentS32Data.SegInfo.nLinBeginY);
+                    int localMaxY = Math.Min(63, maxGameY - currentS32Data.SegInfo.nLinBeginY);
+
+                    for (int y = localMinY; y <= localMaxY; y++)
+                    {
+                        for (int x3 = localMinX3; x3 <= localMaxX3; x3++)
+                        {
+                            int gameX = currentS32Data.SegInfo.nLinBeginX + x3;
+                            int gameY = currentS32Data.SegInfo.nLinBeginY + y;
+                            selectedCoords[(gameX, gameY)] = new SelectedCell
+                            {
+                                S32Data = currentS32Data,
+                                LocalX = x3 * 2,  // 轉換為 Layer1 座標
+                                LocalY = y
+                            };
+                        }
+                    }
+                }
+            }
+
+            // 再處理其他 S32 檔案，只填補尚未選取的座標
             foreach (var filePath in candidateFiles)
             {
                 if (!_document.S32Files.TryGetValue(filePath, out var s32Data))
                     continue;
 
+                // 跳過 currentS32Data（已處理）
+                if (currentS32Data != null && s32Data.FilePath == currentS32Data.FilePath)
+                    continue;
+
                 // 先檢查這個 S32 的遊戲座標範圍是否與選取範圍有交集
-                // 擴展範圍: 0-127 (原始 0-63 的 2 倍，支援超出邊界的物件)
                 int s32MinGameX = s32Data.SegInfo.nLinBeginX;
-                int s32MaxGameX = s32Data.SegInfo.nLinBeginX + 127;  // 擴展到 128 格
+                int s32MaxGameX = s32Data.SegInfo.nLinBeginX + 63;  // 標準 64 格範圍
                 int s32MinGameY = s32Data.SegInfo.nLinBeginY;
-                int s32MaxGameY = s32Data.SegInfo.nLinBeginY + 127;  // 擴展到 128 格
+                int s32MaxGameY = s32Data.SegInfo.nLinBeginY + 63;
 
                 // 快速排除不相交的 S32
                 if (s32MaxGameX < minGameX || s32MinGameX > maxGameX ||
                     s32MaxGameY < minGameY || s32MinGameY > maxGameY)
                     continue;
 
-                // 計算在這個 S32 內需要檢查的範圍（擴展到 0-127）
+                // 計算在這個 S32 內需要檢查的範圍
                 int localMinX3 = Math.Max(0, minGameX - s32Data.SegInfo.nLinBeginX);
-                int localMaxX3 = Math.Min(127, maxGameX - s32Data.SegInfo.nLinBeginX);
+                int localMaxX3 = Math.Min(63, maxGameX - s32Data.SegInfo.nLinBeginX);
                 int localMinY = Math.Max(0, minGameY - s32Data.SegInfo.nLinBeginY);
-                int localMaxY = Math.Min(127, maxGameY - s32Data.SegInfo.nLinBeginY);
+                int localMaxY = Math.Min(63, maxGameY - s32Data.SegInfo.nLinBeginY);
 
                 for (int y = localMinY; y <= localMaxY; y++)
                 {
                     for (int x3 = localMinX3; x3 <= localMaxX3; x3++)
                     {
-                        result.Add(new SelectedCell
+                        int gameX = s32Data.SegInfo.nLinBeginX + x3;
+                        int gameY = s32Data.SegInfo.nLinBeginY + y;
+
+                        // 只有當這個座標尚未被選取時才加入
+                        if (!selectedCoords.ContainsKey((gameX, gameY)))
                         {
-                            S32Data = s32Data,
-                            LocalX = x3 * 2,  // 轉換為 Layer1 座標
-                            LocalY = y
-                        });
+                            selectedCoords[(gameX, gameY)] = new SelectedCell
+                            {
+                                S32Data = s32Data,
+                                LocalX = x3 * 2,  // 轉換為 Layer1 座標
+                                LocalY = y
+                            };
+                        }
                     }
                 }
             }
 
+            result.AddRange(selectedCoords.Values);
             return result;
         }
 
@@ -2967,14 +3015,14 @@ namespace L1FlyMapViewer
         {
             this.pictureBox1.Top = -this.vScrollBar1.Value;
             if (!this._interaction.IsMouseDrag)
-                UpdateMiniMap();
+                UpdateMiniMapViewportRect();
         }
 
         public void hScrollBar1_Scroll(object sender, ScrollEventArgs e)
         {
             this.pictureBox1.Left = -this.hScrollBar1.Value;
             if (!this._interaction.IsMouseDrag)
-                UpdateMiniMap();
+                UpdateMiniMapViewportRect();
         }
 
         private void pictureBox2_MouseDown(object sender, MouseEventArgs e)
@@ -3014,7 +3062,7 @@ namespace L1FlyMapViewer
                     }
                 }
 
-                UpdateMiniMap();
+                UpdateMiniMapViewportRect();
                 this._interaction.IsMouseDrag = false;
             }
         }
@@ -3197,8 +3245,8 @@ namespace L1FlyMapViewer
             // 檢查是否需要重新渲染
             CheckAndRerenderIfNeeded();
 
-            // 更新小地圖
-            UpdateMiniMap();
+            // 更新小地圖紅框
+            UpdateMiniMapViewportRect();
 
             // 阻止事件繼續傳遞
             ((HandledMouseEventArgs)e).Handled = true;
@@ -3230,10 +3278,10 @@ namespace L1FlyMapViewer
                 // 重新渲染（縮放改變會觸發重新渲染）
                 RenderS32Map();
 
-                LogPerf($"[APPLY-ZOOM] calling UpdateMiniMap");
+                LogPerf($"[APPLY-ZOOM] calling UpdateMiniMapViewportRect");
 
-                // 更新小地圖
-                UpdateMiniMap();
+                // 更新小地圖紅框（縮放只影響視窗大小，不需重繪底圖）
+                UpdateMiniMapViewportRect();
 
                 // 更新狀態欄顯示縮放級別
                 this.lblS32Info.Text = $"縮放: {s32ZoomLevel:P0}";
@@ -6466,9 +6514,9 @@ namespace L1FlyMapViewer
             // 設定 ViewState 的捲動位置
             _viewState.SetScrollSilent(centerX, centerY);
 
-            // 重新渲染並更新小地圖
+            // 重新渲染並更新小地圖紅框
             CheckAndRerenderIfNeeded();
-            UpdateMiniMap();
+            UpdateMiniMapViewportRect();
         }
 
         // 繪製第三層（地圖屬性）- 用邊線顯示屬性
@@ -9937,8 +9985,8 @@ namespace L1FlyMapViewer
                 _interaction.EndDrag();
                 this._mapViewerControl.Cursor = Cursors.Default;
 
-                // 延遲更新 MiniMap，避免阻塞拖曳結束事件
-                this.BeginInvoke((MethodInvoker)delegate { UpdateMiniMap(); });
+                // 延遲更新 MiniMap 紅框，避免阻塞拖曳結束事件
+                this.BeginInvoke((MethodInvoker)delegate { UpdateMiniMapViewportRect(); });
 
                 // 拖曳結束後重新渲染
                 RenderS32Map();
@@ -11709,8 +11757,12 @@ namespace L1FlyMapViewer
             // Layer1 的 X 需要除以 2 轉換為遊戲座標
             int gameX = x / 2;
             if (gameX >= 64) gameX = 63;
+            if (gameX < 0) gameX = 0;
+            int gameY = y;
+            if (gameY >= 64) gameY = 63;
+            if (gameY < 0) gameY = 0;
 
-            var attr = currentS32Data.Layer3[y, gameX];
+            var attr = currentS32Data.Layer3[gameY, gameX];
             if (attr != null)
             {
                 // 內容面板（放在可捲動區域內）
@@ -11722,8 +11774,8 @@ namespace L1FlyMapViewer
                 Label info = new Label();
                 info.AutoSize = true;
 
-                string attrText = $"遊戲座標: ({gameX}, {y})\n";
-                attrText += $"(Layer1 X={x})\n";
+                string attrText = $"遊戲座標: ({gameX}, {gameY})\n";
+                attrText += $"(Layer1 X={x}, Y={y})\n";
                 attrText += "─────────────\n";
 
                 // Attribute1 (左上)
@@ -17645,7 +17697,7 @@ namespace L1FlyMapViewer
             _editState.HighlightedCellY = obj.Y;
 
             _mapViewerControl.Refresh();
-            UpdateMiniMap();
+            UpdateMiniMapViewportRect();
 
             this.toolStripStatusLabel1.Text = $"跳轉到群組 {info.DistanceCode}:G{info.GroupId}，位置 ({obj.X}, {obj.Y})，共 {info.Objects.Count} 個物件";
         }

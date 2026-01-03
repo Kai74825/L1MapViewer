@@ -389,8 +389,8 @@ namespace L1MapViewer.Controls
                 e.Graphics.DrawImage(_miniMapBitmap, drawX, drawY, drawWidth, drawHeight);
             }
 
-            // 繪製視窗位置紅框
-            if (ViewState != null && ViewState.MapWidth > 0)
+            // 繪製視窗位置紅框（渲染中不顯示紅框）
+            if (!_isRendering && ViewState != null && ViewState.MapWidth > 0)
             {
                 DrawViewportRect(e.Graphics);
             }
