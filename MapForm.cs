@@ -21422,7 +21422,8 @@ namespace L1FlyMapViewer
             resultForm.Controls.Add(tabControl);
 
             // 目前作用中的 ListView（用於編輯操作）
-            ListView lvItems = lvSelected;
+            // 預設 tab 是 index 0 (tabAll)，所以初始值應該是 lvAll
+            ListView lvItems = lvAll;
             tabControl.SelectedIndexChanged += (s, args) =>
             {
                 lvItems = tabControl.SelectedIndex == 0 ? lvAll : lvSelected;
