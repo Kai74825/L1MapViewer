@@ -126,7 +126,102 @@ namespace L1MapViewer.CLI
                 }
             }
 
+            // 4. 讀取 SPR 檔案
+            // 收集所有 spr/file/ 和 spr/code/ 下的檔案
+            var sprFileEntries = new Dictionary<int, Dictionary<string, ZipArchiveEntry>>();
+            var sprCodeEntries = new Dictionary<int, ZipArchiveEntry>();
+
+            foreach (var entry in zipArchive.Entries)
+            {
+                if (entry.FullName.StartsWith("spr/file/", StringComparison.OrdinalIgnoreCase) &&
+                    entry.Name.EndsWith(".spr", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 解析 SprId: 可能是 "2197.spr" 或 "2197-0.spr"
+                    string fileName = entry.Name;
+                    int sprId = ParseSprIdFromFileName(fileName);
+                    if (sprId > 0)
+                    {
+                        if (!sprFileEntries.ContainsKey(sprId))
+                            sprFileEntries[sprId] = new Dictionary<string, ZipArchiveEntry>(StringComparer.OrdinalIgnoreCase);
+                        sprFileEntries[sprId][fileName] = entry;
+                    }
+                }
+                else if (entry.FullName.StartsWith("spr/code/", StringComparison.OrdinalIgnoreCase) &&
+                         entry.Name.EndsWith(".sprtxt", StringComparison.OrdinalIgnoreCase))
+                {
+                    // 解析 SprId: "2197.sprtxt"
+                    string baseName = Path.GetFileNameWithoutExtension(entry.Name);
+                    if (int.TryParse(baseName, out int sprId))
+                    {
+                        sprCodeEntries[sprId] = entry;
+                    }
+                }
+            }
+
+            // 組合 SPR 資料
+            var allSprIds = new HashSet<int>(sprFileEntries.Keys);
+            foreach (var sprId in sprCodeEntries.Keys)
+                allSprIds.Add(sprId);
+
+            foreach (int sprId in allSprIds)
+            {
+                var sprData = new SprPackageData { SprId = sprId };
+
+                // 讀取所有 SPR 檔案
+                if (sprFileEntries.TryGetValue(sprId, out var fileDict))
+                {
+                    foreach (var kvp in fileDict)
+                    {
+                        using (var stream = kvp.Value.Open())
+                        using (var ms = new MemoryStream())
+                        {
+                            stream.CopyTo(ms);
+                            sprData.Files[kvp.Key] = ms.ToArray();
+                        }
+                    }
+                }
+
+                // 讀取 CodeText
+                if (sprCodeEntries.TryGetValue(sprId, out var codeEntry))
+                {
+                    using (var stream = codeEntry.Open())
+                    using (var reader = new StreamReader(stream, Encoding.UTF8))
+                    {
+                        sprData.CodeText = reader.ReadToEnd();
+                    }
+                }
+
+                fs32.Sprs[sprId] = sprData;
+            }
+
             return fs32;
+        }
+
+        /// <summary>
+        /// 從 SPR 檔名解析 SprId
+        /// 支援格式: "2197.spr", "2197-0.spr", "2197-1.SPR" 等
+        /// </summary>
+        private static int ParseSprIdFromFileName(string fileName)
+        {
+            if (string.IsNullOrEmpty(fileName))
+                return 0;
+
+            // 移除 .spr 副檔名
+            string baseName = Path.GetFileNameWithoutExtension(fileName);
+            if (string.IsNullOrEmpty(baseName))
+                return 0;
+
+            // 檢查是否有 "-" (如 "2197-0")
+            int dashIndex = baseName.IndexOf('-');
+            if (dashIndex > 0)
+            {
+                baseName = baseName.Substring(0, dashIndex);
+            }
+
+            if (int.TryParse(baseName, out int sprId))
+                return sprId;
+
+            return 0;
         }
 
         /// <summary>

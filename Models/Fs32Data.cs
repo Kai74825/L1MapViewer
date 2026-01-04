@@ -149,11 +149,8 @@ namespace L1MapViewer.Models
         /// <summary>原始 SPR ID</summary>
         public int SprId { get; set; }
 
-        /// <summary>原始檔名 (如 2197-0.spr)</summary>
-        public string OriginalFileName { get; set; } = string.Empty;
-
-        /// <summary>.spr 檔案原始資料</summary>
-        public byte[] SprData { get; set; } = Array.Empty<byte>();
+        /// <summary>SPR 檔案 (檔名 -> 資料)，支援多個檔案如 2197-0.spr, 2197-1.spr 等</summary>
+        public Dictionary<string, byte[]> Files { get; set; } = new Dictionary<string, byte[]>();
 
         /// <summary>list.spr 對應的編碼文字 (Entry 格式)</summary>
         public string CodeText { get; set; } = string.Empty;

@@ -4416,11 +4416,51 @@ namespace L1FlyMapViewer
                         return;
                     }
 
-                    // 2. 顯示匯入資訊並選擇匯入模式
+                    // 2. 統計 Layer8 項目並顯示警告
+                    int totalL8Items = 0;
+                    HashSet<int> l8SprIds = new HashSet<int>();
+                    foreach (var block in fs32.Blocks)
+                    {
+                        try
+                        {
+                            var tempS32 = S32Parser.Parse(block.S32Data);
+                            if (tempS32?.Layer8 != null)
+                            {
+                                totalL8Items += tempS32.Layer8.Count;
+                                foreach (var l8 in tempS32.Layer8)
+                                    l8SprIds.Add(l8.SprId);
+                            }
+                        }
+                        catch { }
+                    }
+
+                    if (totalL8Items > 0)
+                    {
+                        string l8Warning = $"⚠️ 警告：包含 {totalL8Items} 個 Layer8 項目 (使用 {l8SprIds.Count} 種 SPR)\n\n";
+                        if (fs32.Sprs.Count > 0)
+                        {
+                            l8Warning += $"fs32 已包含 {fs32.Sprs.Count} 個 SPR 檔案\n";
+                            l8Warning += "• spr/file/*.spr → 匯入至 Client\n";
+                            l8Warning += "• spr/code/*.sprtxt → 加入您的 list.spr 編碼檔\n";
+                        }
+                        else
+                        {
+                            l8Warning += "fs32 不包含 SPR 檔案\n請自行準備對應的 SPR 編碼檔\n";
+                        }
+                        l8Warning += "\n否則可能導致遊戲閃退！\n\n確定要繼續匯入嗎？";
+
+                        var l8Result = MessageBox.Show(l8Warning, "Layer8 警告",
+                            MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                        if (l8Result != DialogResult.Yes)
+                            return;
+                    }
+
+                    // 3. 顯示匯入資訊並選擇匯入模式
                     string infoMessage = $"fs32 地圖包資訊：\n\n" +
                                          $"• 來源地圖: {fs32.SourceMapId}\n" +
                                          $"• 區塊數量: {fs32.Blocks.Count}\n" +
-                                         $"• 圖塊數量: {fs32.Tiles.Count}\n\n" +
+                                         $"• 圖塊數量: {fs32.Tiles.Count}\n" +
+                                         $"• SPR 數量: {fs32.Sprs.Count}\n\n" +
                                          $"將匯入至當前地圖: {_document.MapId}";
 
                     var importModeResult = ShowImportModeDialog(infoMessage);
@@ -10844,7 +10884,7 @@ namespace L1FlyMapViewer
             try
             {
                 // 解析 list.spr
-                var sprList = SprListParser.Parse(sprListPath);
+                var sprList = SprListParser.LoadFromFile(sprListPath);
                 if (sprList == null || sprList.Entries == null)
                 {
                     MessageBox.Show("無法解析 list.spr 檔案", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
@@ -10896,9 +10936,9 @@ namespace L1FlyMapViewer
                     // 收集 SPR 檔案
                     foreach (int sprId in sprIds)
                     {
-                        // 嘗試從各個 sprite idx 讀取 SPR 資料
-                        var (sprData, originalFileName) = FindSprFromPakFiles(pakFiles, sprId);
-                        if (sprData == null)
+                        // 嘗試從各個 sprite idx 讀取所有符合的 SPR 檔案 (如 2197.spr, 2197-0.spr, 2197-1.spr 等)
+                        var sprFiles = FindAllSprFromPakFiles(pakFiles, sprId);
+                        if (sprFiles.Count == 0)
                         {
                             failCount++;
                             failedIds.Add(sprId);
@@ -10935,8 +10975,7 @@ namespace L1FlyMapViewer
                         fs32.Sprs[sprId] = new SprPackageData
                         {
                             SprId = sprId,
-                            OriginalFileName = originalFileName,
-                            SprData = sprData,
+                            Files = sprFiles,
                             CodeText = codeText
                         };
                         successCount++;
@@ -11036,6 +11075,43 @@ namespace L1FlyMapViewer
             }
 
             return (null, null);
+        }
+
+        /// <summary>
+        /// 從已開啟的 PakFile 列表中尋找所有符合的 SPR 檔案
+        /// 例如 sprId=2197 會找 2197.spr, 2197-0.spr, 2197-1.spr 等
+        /// </summary>
+        private Dictionary<string, byte[]> FindAllSprFromPakFiles(List<PakFile> pakFiles, int sprId)
+        {
+            var result = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+            string exactName = $"{sprId}.spr";
+            string prefix = $"{sprId}-";
+
+            foreach (var pak in pakFiles)
+            {
+                foreach (var file in pak.Files)
+                {
+                    string fileName = file.FileName;
+                    if (string.IsNullOrEmpty(fileName))
+                        continue;
+
+                    // 符合 {sprId}.spr 或 {sprId}-*.spr 格式
+                    bool match = fileName.Equals(exactName, StringComparison.OrdinalIgnoreCase) ||
+                                 (fileName.StartsWith(prefix, StringComparison.OrdinalIgnoreCase) &&
+                                  fileName.EndsWith(".spr", StringComparison.OrdinalIgnoreCase));
+
+                    if (match && !result.ContainsKey(fileName))
+                    {
+                        try
+                        {
+                            result[fileName] = pak.Extract(fileName);
+                        }
+                        catch { }
+                    }
+                }
+            }
+
+            return result;
         }
 
         // 儲存選取區域為素材 (fs3p)
@@ -16441,11 +16517,51 @@ namespace L1FlyMapViewer
                     return;
                 }
 
-                // 2. 顯示匯入資訊並選擇匯入模式
+                // 2. 統計 Layer8 項目並顯示警告
+                int totalL8Items = 0;
+                HashSet<int> l8SprIds = new HashSet<int>();
+                foreach (var block in fs32.Blocks)
+                {
+                    try
+                    {
+                        var tempS32 = S32Parser.Parse(block.S32Data);
+                        if (tempS32?.Layer8 != null)
+                        {
+                            totalL8Items += tempS32.Layer8.Count;
+                            foreach (var l8 in tempS32.Layer8)
+                                l8SprIds.Add(l8.SprId);
+                        }
+                    }
+                    catch { }
+                }
+
+                if (totalL8Items > 0)
+                {
+                    string l8Warning = $"⚠️ 警告：包含 {totalL8Items} 個 Layer8 項目 (使用 {l8SprIds.Count} 種 SPR)\n\n";
+                    if (fs32.Sprs.Count > 0)
+                    {
+                        l8Warning += $"fs32 已包含 {fs32.Sprs.Count} 個 SPR 檔案\n";
+                        l8Warning += "• spr/file/*.spr → 匯入至 Client\n";
+                        l8Warning += "• spr/code/*.sprtxt → 加入您的 list.spr 編碼檔\n";
+                    }
+                    else
+                    {
+                        l8Warning += "fs32 不包含 SPR 檔案\n請自行準備對應的 SPR 編碼檔\n";
+                    }
+                    l8Warning += "\n否則可能導致遊戲閃退！\n\n確定要繼續匯入嗎？";
+
+                    var l8Result = MessageBox.Show(l8Warning, "Layer8 警告",
+                        MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+                    if (l8Result != DialogResult.Yes)
+                        return;
+                }
+
+                // 3. 顯示匯入資訊並選擇匯入模式
                 string infoMessage = $"fs32 地圖包資訊：\n\n" +
                                      $"• 來源地圖: {fs32.SourceMapId}\n" +
                                      $"• 區塊數量: {fs32.Blocks.Count}\n" +
-                                     $"• 圖塊數量: {fs32.Tiles.Count}\n\n" +
+                                     $"• 圖塊數量: {fs32.Tiles.Count}\n" +
+                                     $"• SPR 數量: {fs32.Sprs.Count}\n\n" +
                                      $"將匯入至當前地圖: {_document.MapId}";
 
                 var importModeResult = ShowImportModeDialog(infoMessage);

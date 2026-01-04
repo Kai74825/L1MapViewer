@@ -109,16 +109,14 @@ namespace L1MapViewer.CLI
                 {
                     foreach (var spr in fs32.Sprs.Values)
                     {
-                        // 使用原始檔名 (如 2197-0.spr)，如果沒有則使用 {sprId}.spr
-                        string sprFileName = !string.IsNullOrEmpty(spr.OriginalFileName)
-                            ? spr.OriginalFileName
-                            : $"{spr.SprId}.spr";
-
-                        // 寫入 spr/file/{originalFileName}
-                        var sprEntry = zipArchive.CreateEntry($"spr/file/{sprFileName}", CompressionLevel.Optimal);
-                        using (var stream = sprEntry.Open())
+                        // 寫入所有 SPR 檔案 (如 2197.spr, 2197-0.spr, 2197-1.spr 等)
+                        foreach (var file in spr.Files)
                         {
-                            stream.Write(spr.SprData, 0, spr.SprData.Length);
+                            var sprEntry = zipArchive.CreateEntry($"spr/file/{file.Key}", CompressionLevel.Optimal);
+                            using (var stream = sprEntry.Open())
+                            {
+                                stream.Write(file.Value, 0, file.Value.Length);
+                            }
                         }
 
                         // 寫入 spr/code/{sprId}.sprtxt (使用 sprId 作為 key)

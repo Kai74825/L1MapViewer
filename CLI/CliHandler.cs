@@ -1367,11 +1367,12 @@ L1MapViewer CLI - S32 檔案解析工具
                 Console.WriteLine("選項:");
                 Console.WriteLine("  --downscale     將 Remaster 版 Tile (48x48) 降級為 Classic 版 (24x24)");
                 Console.WriteLine("  --no-l8ext      移除 Layer8 擴展資料");
+                Console.WriteLine("  --listspr <path>  打包 Layer8 SPR 檔案（指定 list.spr 路徑）");
                 Console.WriteLine();
                 Console.WriteLine("範例:");
                 Console.WriteLine("  export-fs32 C:\\client\\map\\100002 C:\\output\\100002.fs32");
                 Console.WriteLine("  export-fs32 C:\\client\\map\\100002 C:\\output\\100002.fs32 --downscale");
-                Console.WriteLine("  export-fs32 C:\\client\\map\\100002 C:\\output\\100002.fs32 --no-l8ext");
+                Console.WriteLine("  export-fs32 C:\\client\\map\\100002 C:\\output\\100002.fs32 --listspr list.spr");
                 return 1;
             }
 
@@ -1379,6 +1380,14 @@ L1MapViewer CLI - S32 檔案解析工具
             string outputPath = args[1];
             bool downscale = args.Contains("--downscale");
             bool noL8Ext = args.Contains("--no-l8ext");
+
+            // 解析 --listspr 參數
+            string sprListPath = null;
+            int sprIndex = Array.IndexOf(args, "--listspr");
+            if (sprIndex >= 0 && sprIndex + 1 < args.Length)
+            {
+                sprListPath = args[sprIndex + 1];
+            }
 
             if (!Directory.Exists(mapPath))
             {
@@ -1426,6 +1435,7 @@ L1MapViewer CLI - S32 檔案解析工具
             Console.WriteLine($"輸出路徑: {outputPath}");
             Console.WriteLine($"Tile 降級: {(downscale ? "是" : "否")}");
             Console.WriteLine($"移除 L8 擴展: {(noL8Ext ? "是" : "否")}");
+            Console.WriteLine($"打包 SPR: {(!string.IsNullOrEmpty(sprListPath) ? sprListPath : "否")}");
             Console.WriteLine();
 
             var sw = Stopwatch.StartNew();
@@ -1546,8 +1556,27 @@ L1MapViewer CLI - S32 檔案解析工具
                 }
             }
 
+            // 收集 Layer8 SprIds
+            var allSprIds = new HashSet<int>();
+            if (!string.IsNullOrEmpty(sprListPath))
+            {
+                foreach (var s32Data in s32DataList)
+                {
+                    if (s32Data?.Layer8 != null)
+                    {
+                        foreach (var item in s32Data.Layer8)
+                        {
+                            if (item.SprId > 0)
+                                allSprIds.Add(item.SprId);
+                        }
+                    }
+                }
+            }
+
             Console.WriteLine($"區塊數量: {fs32.Blocks.Count}");
             Console.WriteLine($"使用的 TileId 數量: {allTileIds.Count}");
+            if (allSprIds.Count > 0)
+                Console.WriteLine($"使用的 SprId 數量: {allSprIds.Count}");
 
             // 打包 Tiles
             if (!string.IsNullOrEmpty(Share.LineagePath))
@@ -1582,6 +1611,121 @@ L1MapViewer CLI - S32 檔案解析工具
                 if (downscale)
                 {
                     Console.WriteLine($"已降級 {downscaledCount} 個 Remaster Tile");
+                }
+            }
+
+            // 打包 SPR 檔案
+            if (!string.IsNullOrEmpty(sprListPath) && allSprIds.Count > 0 && !string.IsNullOrEmpty(Share.LineagePath))
+            {
+                Console.WriteLine("打包 SPR 檔案...");
+
+                // 解析 list.spr
+                var sprList = Lin.Helper.Core.Sprite.SprListParser.LoadFromFile(sprListPath);
+                if (sprList == null || sprList.Entries == null)
+                {
+                    Console.WriteLine("警告: 無法解析 list.spr 檔案");
+                }
+                else
+                {
+                    if (sprList.Entries.Count == 0)
+                    {
+                        Console.WriteLine("警告: list.spr 沒有任何 entries（格式可能不相容）");
+                    }
+                    // 找到所有 sprite idx 檔案
+                    var spriteIdxFiles = FindSpriteIdxFiles(Share.LineagePath);
+                    if (spriteIdxFiles.Count == 0)
+                    {
+                        Console.WriteLine($"警告: 在 {Share.LineagePath} 找不到 sprite.idx 檔案");
+                    }
+                    else
+                    {
+                        int sprSuccessCount = 0;
+                        int sprFailCount = 0;
+
+                        // 預先開啟所有 sprite idx 檔案
+                        var pakFiles = new List<Lin.Helper.Core.Pak.PakFile>();
+                        try
+                        {
+                            foreach (string idxPath in spriteIdxFiles)
+                            {
+                                try
+                                {
+                                    pakFiles.Add(new Lin.Helper.Core.Pak.PakFile(idxPath));
+                                }
+                                catch
+                                {
+                                    // 忽略無法開啟的 idx 檔案
+                                }
+                            }
+
+                            if (pakFiles.Count == 0)
+                            {
+                                Console.WriteLine("警告: 無法開啟任何 sprite.idx 檔案");
+                            }
+                            else
+                            {
+                                foreach (int sprId in allSprIds)
+                                {
+                                    // 從 pak 檔案中尋找所有符合的 SPR 檔案 (如 2197.spr, 2197-0.spr, 2197-1.spr 等)
+                                    var sprFiles = FindAllSprFromPakFiles(pakFiles, sprId);
+                                    if (sprFiles.Count == 0)
+                                    {
+                                        sprFailCount++;
+                                        continue;
+                                    }
+
+                                    // 取得對應的 CodeText
+                                    string codeText = "";
+                                    if (sprList.Entries.Count > 0)
+                                    {
+                                        try
+                                        {
+                                            var entry = sprList.Entries.FirstOrDefault(e => e.Id == sprId);
+                                            if (entry.Id > 0)
+                                            {
+                                                string tempFile = Path.GetTempFileName();
+                                                try
+                                                {
+                                                    Lin.Helper.Core.Sprite.SprListWriter.SaveEntry(entry, tempFile);
+                                                    codeText = File.ReadAllText(tempFile);
+                                                }
+                                                finally
+                                                {
+                                                    if (File.Exists(tempFile))
+                                                        File.Delete(tempFile);
+                                                }
+                                            }
+                                        }
+                                        catch
+                                        {
+                                            // 無法取得 CodeText
+                                        }
+                                    }
+
+                                    fs32.Sprs[sprId] = new SprPackageData
+                                    {
+                                        SprId = sprId,
+                                        Files = sprFiles,
+                                        CodeText = codeText
+                                    };
+                                    sprSuccessCount++;
+                                }
+                            }
+                        }
+                        finally
+                        {
+                            foreach (var pak in pakFiles)
+                            {
+                                pak.Dispose();
+                            }
+                        }
+
+                        Console.WriteLine($"已打包 {sprSuccessCount} 個 SPR");
+                        if (sprFailCount > 0)
+                        {
+                            Console.WriteLine($"找不到 {sprFailCount} 個 SPR");
+                        }
+                    }
                 }
             }
 
@@ -1670,6 +1814,46 @@ L1MapViewer CLI - S32 檔案解析工具
             Console.WriteLine($"來源地圖: {fs32.SourceMapId}");
             Console.WriteLine($"區塊數量: {fs32.Blocks.Count}");
             Console.WriteLine($"Tile 數量: {fs32.Tiles.Count}");
+            Console.WriteLine($"SPR 數量: {fs32.Sprs.Count}");
+
+            // 統計 Layer8 項目數量
+            int totalL8Items = 0;
+            HashSet<int> l8SprIds = new HashSet<int>();
+            foreach (var block in fs32.Blocks)
+            {
+                try
+                {
+                    var tempS32 = S32Parser.Parse(block.S32Data);
+                    if (tempS32?.Layer8 != null)
+                    {
+                        totalL8Items += tempS32.Layer8.Count;
+                        foreach (var l8 in tempS32.Layer8)
+                        {
+                            l8SprIds.Add(l8.SprId);
+                        }
+                    }
+                }
+                catch { }
+            }
+
+            if (totalL8Items > 0)
+            {
+                Console.WriteLine();
+                Console.WriteLine("========================================");
+                Console.WriteLine($"警告: 包含 {totalL8Items} 個 Layer8 項目 (使用 {l8SprIds.Count} 種 SPR)");
+                if (fs32.Sprs.Count > 0)
+                {
+                    Console.WriteLine($"fs32 已包含 {fs32.Sprs.Count} 個 SPR 檔案");
+                    Console.WriteLine("• spr/file/*.spr → 匯入至 Client");
+                    Console.WriteLine("• spr/code/*.sprtxt → 加入您的 list.spr 編碼檔");
+                }
+                else
+                {
+                    Console.WriteLine("fs32 不包含 SPR 檔案，請自行準備對應的 SPR 編碼檔");
+                }
+                Console.WriteLine("否則可能導致遊戲閃退！");
+                Console.WriteLine("========================================");
+            }
             Console.WriteLine();
 
             // 確保目標資料夾存在
@@ -6732,6 +6916,82 @@ L1MapViewer CLI - S32 檔案解析工具
             if (x < 1 || x >= xLen || y < 1 || y >= yLen) return false;
             return (t1[x, y] & 1) == 0 && (t1[x - 1, y] & 1) == 0 &&
                    (t3[x - 1, y] & 1) == 0 && (t3[x - 1, y - 1] & 1) == 0;
+        }
+
+        /// <summary>
+        /// 找到資料夾內所有的 sprite idx 檔案
+        /// </summary>
+        private static List<string> FindSpriteIdxFiles(string folder)
+        {
+            var result = new List<string>();
+
+            if (!Directory.Exists(folder))
+                return result;
+
+            // 取得資料夾內所有檔案，用 case-insensitive 比對
+            var allFiles = Directory.GetFiles(folder, "*.idx");
+
+            // 建立要找的檔名集合
+            var targetNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "sprite.idx"
+            };
+            for (int i = 0; i <= 15; i++)
+            {
+                targetNames.Add($"sprite{i:D2}.idx");
+            }
+
+            // 比對檔案
+            foreach (var file in allFiles)
+            {
+                string fileName = Path.GetFileName(file);
+                if (targetNames.Contains(fileName))
+                {
+                    result.Add(file);
+                }
+            }
+
+            return result;
+        }
+
+        /// <summary>
+        /// 從已開啟的 PakFile 列表中尋找 SPR（所有匹配 {sprId}-*.spr 的檔案）
+        /// </summary>
+        private static Dictionary<string, byte[]> FindAllSprFromPakFiles(List<Lin.Helper.Core.Pak.PakFile> pakFiles, int sprId)
+        {
+            var result = new Dictionary<string, byte[]>(StringComparer.OrdinalIgnoreCase);
+
+            // 匹配 {sprId}.spr 或 {sprId}-*.spr
+            string prefix1 = $"{sprId}.spr";
+            string prefix2 = $"{sprId}-";
+
+            foreach (var pak in pakFiles)
+            {
+                foreach (var file in pak.Files)
+                {
+                    string fileName = file.FileName;
+                    if (string.IsNullOrEmpty(fileName))
+                        continue;
+
+                    bool match = fileName.Equals(prefix1, StringComparison.OrdinalIgnoreCase) ||
+                                 (fileName.StartsWith(prefix2, StringComparison.OrdinalIgnoreCase) &&
+                                  fileName.EndsWith(".spr", StringComparison.OrdinalIgnoreCase));
+
+                    if (match && !result.ContainsKey(fileName))
+                    {
+                        try
+                        {
+                            result[fileName] = pak.Extract(fileName);
+                        }
+                        catch
+                        {
+                            // 忽略無法提取的檔案
+                        }
+                    }
+                }
+            }
+
+            return result;
         }
     }
 }
