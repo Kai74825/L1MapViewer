@@ -570,8 +570,15 @@ namespace L1FlyMapViewer
                 Width = 280
             };
 
-            // 小地圖
-            leftLayout.Items.Add(new Eto.Forms.StackLayoutItem(miniMapPictureBox, false));
+            // 小地圖 (固定大小 268x268)
+            miniMapPictureBox.Size = new Eto.Drawing.Size(268, 268);
+            var miniMapContainer = new Eto.Forms.Panel
+            {
+                Content = miniMapPictureBox,
+                Size = new Eto.Drawing.Size(268, 268),
+                BackgroundColor = Eto.Drawing.Colors.Black
+            };
+            leftLayout.Items.Add(new Eto.Forms.StackLayoutItem(miniMapContainer, false));
 
             // 地圖列表 Tab
             var mapListLayout = new Eto.Forms.StackLayout
