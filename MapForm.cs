@@ -86,6 +86,10 @@ namespace L1FlyMapViewer
         // MiniMapControl（取代原本的 PictureBox 和渲染邏輯）
         private L1MapViewer.Controls.MiniMapControl _miniMapControl;
 
+        // 狀態列控件引用 (用於同步狀態)
+        private Eto.Forms.Button _statusBtnCopyMoveCmd;
+        private Eto.Forms.TextBox _statusTxtJump;
+
         // 圖層切換防抖Timer
         private Timer renderDebounceTimer;
 
@@ -891,15 +895,98 @@ namespace L1FlyMapViewer
             };
 
             // === 狀態列 ===
-            var statusLayout = new Eto.Forms.StackLayout
+            // 使用 Designer.cs 中定義的狀態列控件
+            var statusLayout = new Eto.Forms.TableLayout
+            {
+                Padding = new Eto.Drawing.Padding(5, 2),
+                Spacing = new Eto.Drawing.Size(5, 0),
+                BackgroundColor = Eto.Drawing.Color.FromArgb(240, 240, 240)
+            };
+
+            // 建立狀態列按鈕 (ToolStripButton 不能直接用於 StackLayout)
+            var btnShowAllL8 = new Eto.Forms.Button
+            {
+                Text = toolStripShowAllL8.Text,
+                ToolTip = toolStripShowAllL8.ToolTip,
+                Size = new Eto.Drawing.Size(-1, 22)
+            };
+            btnShowAllL8.Click += (s, e) => toolStripShowAllL8_Click(s, e);
+
+            var btnCopyMoveCmd = new Eto.Forms.Button
+            {
+                Text = toolStripCopyMoveCmd.Text,
+                ToolTip = toolStripCopyMoveCmd.ToolTip,
+                Enabled = toolStripCopyMoveCmd.Enabled,
+                Size = new Eto.Drawing.Size(-1, 22)
+            };
+            btnCopyMoveCmd.Click += (s, e) => toolStripCopyMoveCmd_Click(s, e);
+            // 保存引用以便更新 Enabled 狀態
+            _statusBtnCopyMoveCmd = btnCopyMoveCmd;
+
+            var btnJump = new Eto.Forms.Button
+            {
+                Text = toolStripJumpButton.Text,
+                Size = new Eto.Drawing.Size(-1, 22)
+            };
+            btnJump.Click += (s, e) => toolStripJumpButton_Click(s, e);
+
+            // 跳轉文字框
+            var txtJump = new Eto.Forms.TextBox
+            {
+                Width = 100,
+                ToolTip = "輸入座標 (X,Y) 然後按 Enter 或點擊跳轉"
+            };
+            txtJump.KeyDown += (s, e) =>
+            {
+                if (e.Key == Eto.Forms.Keys.Enter)
+                {
+                    toolStripJumpTextBox.Text = txtJump.Text;
+                    toolStripJumpButton_Click(s, EventArgs.Empty);
+                }
+            };
+            // 同步文字框內容
+            _statusTxtJump = txtJump;
+
+            // 狀態列左側 - 狀態資訊
+            var statusLeft = new Eto.Forms.StackLayout
             {
                 Orientation = Eto.Forms.Orientation.Horizontal,
                 VerticalContentAlignment = Eto.Forms.VerticalAlignment.Center,
-                Spacing = 10,
-                Padding = new Eto.Drawing.Padding(5, 2),
-                BackgroundColor = Eto.Drawing.Colors.LightGrey
+                Spacing = 10
             };
-            statusLayout.Items.Add(new Eto.Forms.Label { Text = "狀態列" });
+            statusLeft.Items.Add(toolStripStatusLabel1);
+            statusLeft.Items.Add(btnShowAllL8);
+            statusLeft.Items.Add(new Eto.Forms.Label { Text = "|", TextColor = Eto.Drawing.Colors.Gray });
+            statusLeft.Items.Add(toolStripStatusLabel2);
+
+            // 狀態列中間 - 進度條 (填充剩餘空間)
+            var statusCenter = new Eto.Forms.StackLayout
+            {
+                Orientation = Eto.Forms.Orientation.Horizontal,
+                VerticalContentAlignment = Eto.Forms.VerticalAlignment.Center,
+                Spacing = 5
+            };
+            statusCenter.Items.Add(toolStripStatusLabel3);
+            statusCenter.Items.Add(toolStripProgressBar1);
+
+            // 狀態列右側 - 複製指令、跳轉
+            var statusRight = new Eto.Forms.StackLayout
+            {
+                Orientation = Eto.Forms.Orientation.Horizontal,
+                VerticalContentAlignment = Eto.Forms.VerticalAlignment.Center,
+                Spacing = 5
+            };
+            statusRight.Items.Add(btnCopyMoveCmd);
+            statusRight.Items.Add(new Eto.Forms.Label { Text = "|", TextColor = Eto.Drawing.Colors.Gray });
+            statusRight.Items.Add(new Eto.Forms.Label { Text = "跳轉座標:" });
+            statusRight.Items.Add(txtJump);
+            statusRight.Items.Add(btnJump);
+
+            statusLayout.Rows.Add(new Eto.Forms.TableRow(
+                new Eto.Forms.TableCell(statusLeft, false),
+                new Eto.Forms.TableCell(statusCenter, true),
+                new Eto.Forms.TableCell(statusRight, false)
+            ));
 
             // === 主布局 (內容 + 狀態列) ===
             var mainLayout = new Eto.Forms.TableLayout
@@ -11650,6 +11737,12 @@ namespace L1FlyMapViewer
                         _editState.SelectedGameY = gameY;
                         toolStripCopyMoveCmd.Enabled = true;
                         toolStripCopyMoveCmd.Text = $"移動 {gameX} {gameY} {_document.MapId}";
+                        // 同步狀態列按鈕
+                        if (_statusBtnCopyMoveCmd != null)
+                        {
+                            _statusBtnCopyMoveCmd.Enabled = true;
+                            _statusBtnCopyMoveCmd.Text = $"移動 {gameX} {gameY} {_document.MapId}";
+                        }
                     }
 
                     // 根據是否有剪貼簿資料顯示不同提示（顯示遊戲座標）
