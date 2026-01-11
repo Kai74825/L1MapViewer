@@ -1,71 +1,12 @@
 using Eto.Forms;
 using Eto.Drawing;
 
+// 事件類型已移至 UI/Component/EventTypes.cs，透過 GlobalUsings.cs 全域匯入
+
 namespace L1MapViewer.Compatibility;
 
 #region WinForms Delegate and Event Types
-
-/// <summary>
-/// MethodInvoker delegate for WinForms compatibility
-/// </summary>
-public delegate void MethodInvoker();
-
-// Event handler delegates for WinForms compatibility
-public delegate void MouseEventHandler(object sender, Eto.Forms.MouseEventArgs e);
-public delegate void KeyEventHandler(object sender, Eto.Forms.KeyEventArgs e);
-public delegate void PaintEventHandler(object sender, Eto.Forms.PaintEventArgs e);
-public delegate void DragEventHandler(object sender, Eto.Forms.DragEventArgs e);
-public delegate void ScrollEventHandler(object sender, ScrollEventArgs e);
-public delegate void PreviewKeyDownEventHandler(object sender, PreviewKeyDownEventArgs e);
-public delegate void DrawItemEventHandler(object sender, DrawItemEventArgs e);
-public delegate void ItemCheckEventHandler(object sender, ItemCheckEventArgs e);
-public delegate void FormClosedEventHandler(object sender, FormClosedEventArgs e);
-public delegate void FormClosingEventHandler(object sender, FormClosingEventArgs e);
-
-/// <summary>
-/// FormClosedEventArgs for WinForms compatibility
-/// </summary>
-public class FormClosedEventArgs : EventArgs
-{
-    public CloseReason CloseReason { get; }
-    public FormClosedEventArgs(CloseReason reason) => CloseReason = reason;
-}
-
-/// <summary>
-/// FormClosingEventArgs for WinForms compatibility
-/// </summary>
-public class FormClosingEventArgs : EventArgs
-{
-    public bool Cancel { get; set; }
-    public CloseReason CloseReason { get; }
-    public FormClosingEventArgs(CloseReason reason) => CloseReason = reason;
-}
-
-public enum CloseReason
-{
-    None,
-    WindowsShutDown,
-    MdiFormClosing,
-    UserClosing,
-    TaskManagerClosing,
-    FormOwnerClosing,
-    ApplicationExitCall
-}
-
-/// <summary>
-/// HandledMouseEventArgs for WinForms compatibility
-/// </summary>
-public class HandledMouseEventArgs : Eto.Forms.MouseEventArgs
-{
-    public HandledMouseEventArgs(Eto.Forms.MouseButtons buttons, Keys modifiers, PointF location, int delta = 0)
-        : base(buttons, modifiers, location)
-    {
-        Delta = delta;
-    }
-
-    public new int Delta { get; }
-    public new bool Handled { get; set; }
-}
+// 事件類型已移至 UI/Component/EventTypes.cs
 
 /// <summary>
 /// StringFormat for GDI+ text formatting compatibility
@@ -2530,30 +2471,6 @@ public class ObjectItemCollection : System.Collections.IList
 }
 
 /// <summary>
-/// ItemCheckEventArgs compatibility
-/// </summary>
-public class ItemCheckEventArgs : EventArgs
-{
-    public int Index { get; }
-    public CheckState NewValue { get; set; }
-    public CheckState CurrentValue { get; }
-
-    public ItemCheckEventArgs(int index, CheckState newValue, CheckState currentValue)
-    {
-        Index = index;
-        NewValue = newValue;
-        CurrentValue = currentValue;
-    }
-}
-
-public enum CheckState
-{
-    Unchecked,
-    Checked,
-    Indeterminate
-}
-
-/// <summary>
 /// ToolStripTextBox compatibility
 /// </summary>
 public class ToolStripTextBox : Eto.Forms.TextBox
@@ -2587,76 +2504,6 @@ public class ToolTip
 }
 
 /// <summary>
-/// DrawItemEventArgs compatibility
-/// </summary>
-public class DrawItemEventArgs : EventArgs
-{
-    public Eto.Drawing.Graphics Graphics { get; }
-    public int Index { get; }
-    public Eto.Drawing.Rectangle Bounds { get; }
-    public DrawItemState State { get; }
-    public Eto.Drawing.Font Font { get; }
-    public Eto.Drawing.Color ForeColor { get; }
-    public Eto.Drawing.Color BackColor { get; }
-
-    public DrawItemEventArgs(Eto.Drawing.Graphics graphics, Eto.Drawing.Font font, Eto.Drawing.Rectangle rect, int index, DrawItemState state)
-    {
-        Graphics = graphics;
-        Font = font;
-        Bounds = rect;
-        Index = index;
-        State = state;
-        ForeColor = Eto.Drawing.Colors.Black;
-        BackColor = Eto.Drawing.Colors.White;
-    }
-
-    public DrawItemEventArgs(Eto.Drawing.Graphics graphics, Eto.Drawing.Font font, Eto.Drawing.Rectangle rect, int index, DrawItemState state, Eto.Drawing.Color foreColor, Eto.Drawing.Color backColor)
-    {
-        Graphics = graphics;
-        Font = font;
-        Bounds = rect;
-        Index = index;
-        State = state;
-        ForeColor = foreColor;
-        BackColor = backColor;
-    }
-
-    public void DrawBackground() { }
-    public void DrawFocusRectangle() { }
-}
-
-[Flags]
-public enum DrawItemState
-{
-    None = 0,
-    Selected = 1,
-    Grayed = 2,
-    Disabled = 4,
-    Checked = 8,
-    Focus = 16,
-    Default = 32,
-    HotLight = 64,
-    Inactive = 128,
-    NoAccelerator = 256,
-    NoFocusRect = 512,
-    ComboBoxEdit = 4096
-}
-
-/// <summary>
-/// PreviewKeyDownEventArgs compatibility
-/// </summary>
-public class PreviewKeyDownEventArgs : EventArgs
-{
-    public Eto.Forms.Keys KeyCode { get; }
-    public bool IsInputKey { get; set; }
-
-    public PreviewKeyDownEventArgs(Eto.Forms.Keys keyCode)
-    {
-        KeyCode = keyCode;
-    }
-}
-
-/// <summary>
 /// IWindowsFormsEditorService stub
 /// </summary>
 public interface IWindowsFormsEditorService
@@ -2674,56 +2521,6 @@ public class ToolboxBitmapAttribute : Attribute
 {
     public ToolboxBitmapAttribute(Type type, string resourceName) { }
     public ToolboxBitmapAttribute(string imageFile) { }
-}
-
-/// <summary>
-/// ScrollEventArgs compatibility
-/// </summary>
-public class ScrollEventArgs : EventArgs
-{
-    public int NewValue { get; set; }
-    public int OldValue { get; set; }
-    public ScrollEventType Type { get; set; }
-    public ScrollOrientation ScrollOrientation { get; set; }
-
-    public ScrollEventArgs(ScrollEventType type, int newValue)
-    {
-        Type = type;
-        NewValue = newValue;
-    }
-
-    public ScrollEventArgs(ScrollEventType type, int oldValue, int newValue)
-    {
-        Type = type;
-        OldValue = oldValue;
-        NewValue = newValue;
-    }
-
-    public ScrollEventArgs(ScrollEventType type, int newValue, ScrollOrientation scroll)
-    {
-        Type = type;
-        NewValue = newValue;
-        ScrollOrientation = scroll;
-    }
-}
-
-public enum ScrollEventType
-{
-    SmallDecrement,
-    SmallIncrement,
-    LargeDecrement,
-    LargeIncrement,
-    ThumbPosition,
-    ThumbTrack,
-    First,
-    Last,
-    EndScroll
-}
-
-public enum ScrollOrientation
-{
-    HorizontalScroll,
-    VerticalScroll
 }
 
 /// <summary>
