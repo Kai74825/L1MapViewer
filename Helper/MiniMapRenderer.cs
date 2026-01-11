@@ -2,14 +2,15 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
+// using System.Drawing; // Replaced with Eto.Drawing
+// using System.Drawing.Imaging; // Replaced with SkiaSharp
 using System.Linq;
 using L1FlyMapViewer;
 using L1MapViewer.Converter;
 using L1MapViewer.Models;
 using L1MapViewer.Other;
 using L1MapViewer.Reader;
+using L1MapViewer.Compatibility;
 
 namespace L1MapViewer.Helper
 {
@@ -182,13 +183,13 @@ namespace L1MapViewer.Helper
             long totalDrawImageMs = 0;
             int blockCount = 0;
 
-            using (Graphics g = Graphics.FromImage(miniBitmap))
+            using (Graphics g = GraphicsHelper.FromImage(miniBitmap))
             {
                 // 使用最快的縮放模式
-                g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
-                g.PixelOffsetMode = System.Drawing.Drawing2D.PixelOffsetMode.HighSpeed;
-                g.CompositingQuality = System.Drawing.Drawing2D.CompositingQuality.HighSpeed;
-                g.Clear(Color.Black);
+                g.SetInterpolationMode(InterpolationMode.NearestNeighbor);
+                g.SetPixelOffsetMode(PixelOffsetMode.HighSpeed);
+                g.SetCompositingQuality(CompositingQuality.HighSpeed);
+                g.Clear(Colors.Black);
 
                 if (useSimplifiedRendering)
                 {
@@ -351,7 +352,7 @@ namespace L1MapViewer.Helper
                         fullBitmap.UnlockBits(bmpData);
 
                         // 用高品質插值縮小到 minimap 大小（保留更多細節）
-                        g.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.HighQualityBicubic;
+                        g.SetInterpolationMode(InterpolationMode.HighQualityBicubic);
                         g.DrawImage(fullBitmap, 0, 0, scaledWidth, scaledHeight);
                     }
                     drawSw.Stop();
@@ -388,8 +389,8 @@ namespace L1MapViewer.Helper
         {
             using (var pen = new Pen(Color.FromArgb(180, 128, 128, 128), 1f))
             {
-                pen.DashStyle = System.Drawing.Drawing2D.DashStyle.Dash;
-                pen.DashPattern = new float[] { 4, 4 };
+                pen.SetDashStyle(DashStyle.Dash);
+                pen.SetDashPattern(new float[] { 4, 4 });
 
                 foreach (object filePathObj in sortedFilePaths)
                 {

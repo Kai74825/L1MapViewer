@@ -11,8 +11,8 @@ namespace L1FlyMapViewer
         // 語言變更事件處理
         private void OnLanguageChanged(object sender, EventArgs e)
         {
-            if (InvokeRequired)
-                Invoke(new Action(UpdateLocalization));
+            if (this.GetInvokeRequired())
+                this.Invoke(new Action(UpdateLocalization));
             else
                 UpdateLocalization();
         }

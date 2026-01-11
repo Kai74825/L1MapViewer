@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Windows.Forms;
+// using System.Drawing; // Replaced with Eto.Drawing
+using Eto.Forms;
+using Eto.Drawing;
+using L1MapViewer.Compatibility;
 using L1MapViewer.Models;
 
 namespace L1MapViewer.Forms
@@ -9,7 +11,7 @@ namespace L1MapViewer.Forms
     /// <summary>
     /// L4 物件編輯對話框
     /// </summary>
-    public class L4EditDialog : Form
+    public class L4EditDialog : WinFormsDialog
     {
         private NumericUpDown numGroupId;
         private NumericUpDown numX;
@@ -57,11 +59,11 @@ namespace L1MapViewer.Forms
             // 目標 S32
             Label lblTargetS32 = new Label();
             lblTargetS32.Text = "所屬 S32:";
-            lblTargetS32.Location = new Point(20, yOffset);
+            lblTargetS32.SetLocation(new Point(20, yOffset));
             lblTargetS32.Size = new Size(120, 20);
 
             cmbTargetS32 = new ComboBox();
-            cmbTargetS32.Location = new Point(150, yOffset - 2);
+            cmbTargetS32.SetLocation(new Point(150, yOffset - 2));
             cmbTargetS32.Size = new Size(230, 23);
             cmbTargetS32.DropDownStyle = ComboBoxStyle.DropDownList;
 
@@ -88,9 +90,9 @@ namespace L1MapViewer.Forms
 
             // 座標資訊標籤
             lblCoordInfo = new Label();
-            lblCoordInfo.Location = new Point(20, yOffset);
+            lblCoordInfo.SetLocation(new Point(20, yOffset));
             lblCoordInfo.Size = new Size(360, 20);
-            lblCoordInfo.ForeColor = Color.Blue;
+            lblCoordInfo.TextColor = Colors.Blue;
             UpdateCoordInfo();
             Controls.Add(lblCoordInfo);
             yOffset += 30;
@@ -98,7 +100,7 @@ namespace L1MapViewer.Forms
             // 分隔線
             Label separator1 = new Label();
             separator1.BorderStyle = BorderStyle.Fixed3D;
-            separator1.Location = new Point(20, yOffset);
+            separator1.SetLocation(new Point(20, yOffset));
             separator1.Size = new Size(360, 2);
             Controls.Add(separator1);
             yOffset += 15;
@@ -106,11 +108,11 @@ namespace L1MapViewer.Forms
             // X 座標
             Label lblX = new Label();
             lblX.Text = "X (L1座標 0-255):";
-            lblX.Location = new Point(20, yOffset);
+            lblX.SetLocation(new Point(20, yOffset));
             lblX.Size = new Size(120, 20);
 
             numX = new NumericUpDown();
-            numX.Location = new Point(150, yOffset - 2);
+            numX.SetLocation(new Point(150, yOffset - 2));
             numX.Size = new Size(100, 23);
             numX.Minimum = 0;
             numX.Maximum = 255;
@@ -124,11 +126,11 @@ namespace L1MapViewer.Forms
             // Y 座標
             Label lblY = new Label();
             lblY.Text = "Y (L1座標 0-255):";
-            lblY.Location = new Point(20, yOffset);
+            lblY.SetLocation(new Point(20, yOffset));
             lblY.Size = new Size(120, 20);
 
             numY = new NumericUpDown();
-            numY.Location = new Point(150, yOffset - 2);
+            numY.SetLocation(new Point(150, yOffset - 2));
             numY.Size = new Size(100, 23);
             numY.Minimum = 0;
             numY.Maximum = 255;
@@ -142,7 +144,7 @@ namespace L1MapViewer.Forms
             // 分隔線
             Label separator2 = new Label();
             separator2.BorderStyle = BorderStyle.Fixed3D;
-            separator2.Location = new Point(20, yOffset);
+            separator2.SetLocation(new Point(20, yOffset));
             separator2.Size = new Size(360, 2);
             Controls.Add(separator2);
             yOffset += 15;
@@ -150,11 +152,11 @@ namespace L1MapViewer.Forms
             // GroupId
             Label lblGroupId = new Label();
             lblGroupId.Text = "GroupId:";
-            lblGroupId.Location = new Point(20, yOffset);
+            lblGroupId.SetLocation(new Point(20, yOffset));
             lblGroupId.Size = new Size(120, 20);
 
             numGroupId = new NumericUpDown();
-            numGroupId.Location = new Point(150, yOffset - 2);
+            numGroupId.SetLocation(new Point(150, yOffset - 2));
             numGroupId.Size = new Size(100, 23);
             numGroupId.Minimum = 0;
             numGroupId.Maximum = 65535;
@@ -167,11 +169,11 @@ namespace L1MapViewer.Forms
             // Layer
             Label lblLayer = new Label();
             lblLayer.Text = "Layer (渲染層):";
-            lblLayer.Location = new Point(20, yOffset);
+            lblLayer.SetLocation(new Point(20, yOffset));
             lblLayer.Size = new Size(120, 20);
 
             numLayer = new NumericUpDown();
-            numLayer.Location = new Point(150, yOffset - 2);
+            numLayer.SetLocation(new Point(150, yOffset - 2));
             numLayer.Size = new Size(100, 23);
             numLayer.Minimum = 0;
             numLayer.Maximum = 255;
@@ -184,11 +186,11 @@ namespace L1MapViewer.Forms
             // TileId
             Label lblTileId = new Label();
             lblTileId.Text = "TileId:";
-            lblTileId.Location = new Point(20, yOffset);
+            lblTileId.SetLocation(new Point(20, yOffset));
             lblTileId.Size = new Size(120, 20);
 
             numTileId = new NumericUpDown();
-            numTileId.Location = new Point(150, yOffset - 2);
+            numTileId.SetLocation(new Point(150, yOffset - 2));
             numTileId.Size = new Size(100, 23);
             numTileId.Minimum = 0;
             numTileId.Maximum = 65535;
@@ -201,11 +203,11 @@ namespace L1MapViewer.Forms
             // IndexId
             Label lblIndexId = new Label();
             lblIndexId.Text = "IndexId:";
-            lblIndexId.Location = new Point(20, yOffset);
+            lblIndexId.SetLocation(new Point(20, yOffset));
             lblIndexId.Size = new Size(120, 20);
 
             numIndexId = new NumericUpDown();
-            numIndexId.Location = new Point(150, yOffset - 2);
+            numIndexId.SetLocation(new Point(150, yOffset - 2));
             numIndexId.Size = new Size(100, 23);
             numIndexId.Minimum = 0;
             numIndexId.Maximum = 255;
@@ -218,14 +220,14 @@ namespace L1MapViewer.Forms
             // 按鈕
             btnOK = new Button();
             btnOK.Text = "確定";
-            btnOK.DialogResult = DialogResult.OK;
-            btnOK.Location = new Point(150, yOffset);
+            btnOK.DialogResult = DialogResult.Ok;
+            btnOK.SetLocation(new Point(150, yOffset));
             btnOK.Size = new Size(80, 30);
 
             btnCancel = new Button();
             btnCancel.Text = "取消";
             btnCancel.DialogResult = DialogResult.Cancel;
-            btnCancel.Location = new Point(250, yOffset);
+            btnCancel.SetLocation(new Point(250, yOffset));
             btnCancel.Size = new Size(80, 30);
 
             AcceptButton = btnOK;
@@ -279,7 +281,7 @@ namespace L1MapViewer.Forms
                 numY.Value = newLocalY;
                 numX.Enabled = true;
                 numY.Enabled = true;
-                lblCoordInfo.ForeColor = Color.Blue;
+                lblCoordInfo.TextColor = Colors.Blue;
                 btnOK.Enabled = true;
             }
             else
@@ -288,7 +290,7 @@ namespace L1MapViewer.Forms
                 numX.Enabled = false;
                 numY.Enabled = false;
                 lblCoordInfo.Text = $"座標超出範圍! ({newLocalX}, {newLocalY}) - 無法移動到此 S32";
-                lblCoordInfo.ForeColor = Color.Red;
+                lblCoordInfo.TextColor = Colors.Red;
                 btnOK.Enabled = false;
             }
 

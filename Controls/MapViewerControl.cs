@@ -1,8 +1,10 @@
 using System;
 using System.ComponentModel;
-using System.Drawing;
+// using System.Drawing; // Replaced with Eto.Drawing
 using System.Threading;
-using System.Windows.Forms;
+using Eto.Forms;
+using Eto.Drawing;
+using L1MapViewer.Compatibility;
 using L1MapViewer.Models;
 using L1MapViewer.Rendering;
 
@@ -34,8 +36,8 @@ namespace L1MapViewer.Controls
         private Point _dragStartScroll;
 
         // 防抖計時器
-        private System.Windows.Forms.Timer _zoomDebounceTimer;
-        private System.Windows.Forms.Timer _dragRenderTimer;
+        private Timer _zoomDebounceTimer;
+        private Timer _dragRenderTimer;
 
         // 縮放控制面板（Google Maps 風格）
         private Panel _zoomControlPanel;
@@ -364,7 +366,7 @@ namespace L1MapViewer.Controls
             this.SuspendLayout();
 
             // 啟用雙緩衝
-            this.DoubleBuffered = true;
+            this.SetDoubleBuffered(true);
             this.SetStyle(ControlStyles.OptimizedDoubleBuffer | ControlStyles.AllPaintingInWmPaint, true);
 
             // 建立 Panel
@@ -372,7 +374,7 @@ namespace L1MapViewer.Controls
             {
                 Dock = DockStyle.Fill,
                 AutoScroll = false,
-                BackColor = Color.Black
+                BackColor = Eto.Drawing.Colors.Black
             };
 
             // 建立 PictureBox
@@ -380,7 +382,7 @@ namespace L1MapViewer.Controls
             {
                 Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.Normal,
-                BackColor = Color.Black
+                BackColor = Colors.Black
             };
 
             // 註冊事件
@@ -392,18 +394,18 @@ namespace L1MapViewer.Controls
             _mapPanel.MouseWheel += MapPanel_MouseWheel;
             _mapPanel.Resize += MapPanel_Resize;
 
-            _mapPanel.Controls.Add(_mapPictureBox);
-            this.Controls.Add(_mapPanel);
+            _mapPanel.GetControls().Add(_mapPictureBox);
+            this.GetControls().Add(_mapPanel);
 
             this.ResumeLayout(false);
         }
 
         private void InitializeTimers()
         {
-            _zoomDebounceTimer = new System.Windows.Forms.Timer { Interval = 150 };
+            _zoomDebounceTimer = new Timer { Interval = 150 };
             _zoomDebounceTimer.Tick += ZoomDebounceTimer_Tick;
 
-            _dragRenderTimer = new System.Windows.Forms.Timer { Interval = 100 };
+            _dragRenderTimer = new Timer { Interval = 100 };
             _dragRenderTimer.Tick += DragRenderTimer_Tick;
         }
 
@@ -413,7 +415,7 @@ namespace L1MapViewer.Controls
             _zoomControlPanel = new Panel
             {
                 Size = new Size(48, 118),
-                BackColor = Color.Transparent,
+                BackColor = Colors.Transparent,
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
             };
 
@@ -459,11 +461,11 @@ namespace L1MapViewer.Controls
                 }
             };
 
-            _zoomControlPanel.Controls.Add(_btnZoomIn);
-            _zoomControlPanel.Controls.Add(_btnZoomOut);
-            _zoomControlPanel.Controls.Add(_btnZoomReset);
+            _zoomControlPanel.GetControls().Add(_btnZoomIn);
+            _zoomControlPanel.GetControls().Add(_btnZoomOut);
+            _zoomControlPanel.GetControls().Add(_btnZoomReset);
 
-            _mapPanel.Controls.Add(_zoomControlPanel);
+            _mapPanel.GetControls().Add(_zoomControlPanel);
             _zoomControlPanel.BringToFront();
 
             // 設定位置並監聽 Resize
@@ -489,7 +491,7 @@ namespace L1MapViewer.Controls
                 Size = new Size(48, 38),
                 Location = new Point(0, top),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.White,
+                BackColor = Colors.White,
                 ForeColor = Color.FromArgb(102, 102, 102),
                 Cursor = Cursors.Hand,
             };
@@ -504,7 +506,7 @@ namespace L1MapViewer.Controls
         {
             if (_zoomControlPanel != null && _mapPanel != null)
             {
-                _zoomControlPanel.Location = new Point(10, _mapPanel.Height - _zoomControlPanel.Height - 10);
+                _zoomControlPanel.SetLocation(new Point(10, _mapPanel.Height - _zoomControlPanel.Height - 10));
             }
         }
 
@@ -515,10 +517,10 @@ namespace L1MapViewer.Controls
         private void MapPictureBox_MouseDown(object sender, MouseEventArgs e)
         {
             // 中鍵拖曳
-            if (e.Button == MouseButtons.Middle)
+            if (e.GetButton() == MouseButtons.Middle)
             {
                 _isDragging = true;
-                _dragStartPoint = e.Location;
+                _dragStartPoint = e.Location.ToPoint();
                 _dragStartScroll = new Point(_viewState.ScrollX, _viewState.ScrollY);
                 this.Cursor = Cursors.SizeAll;
 
@@ -527,18 +529,18 @@ namespace L1MapViewer.Controls
                 _dragRenderTimer.Stop();
 
                 // 也觸發 MapMouseDown 事件，讓外部可以追蹤拖曳狀態
-                var worldPoint = ScreenToWorld(e.Location);
+                var worldPoint = ScreenToWorld(e.Location.ToPoint());
                 var (gameX, gameY) = WorldToGameCoords(worldPoint);
                 MapMouseDown?.Invoke(this, new MapMouseEventArgs(
-                    e.Button, e.Location, worldPoint, gameX, gameY, 0, Control.ModifierKeys));
+                    e.Button(), e.Location.ToPoint(), worldPoint, gameX, gameY, 0, ControlCompat.ModifierKeys));
             }
             else
             {
                 // 轉發給外部處理編輯
-                var worldPoint = ScreenToWorld(e.Location);
+                var worldPoint = ScreenToWorld(e.Location.ToPoint());
                 var (gameX, gameY) = WorldToGameCoords(worldPoint);
                 MapMouseDown?.Invoke(this, new MapMouseEventArgs(
-                    e.Button, e.Location, worldPoint, gameX, gameY, 0, Control.ModifierKeys));
+                    e.Button(), e.Location.ToPoint(), worldPoint, gameX, gameY, 0, ControlCompat.ModifierKeys));
             }
         }
 
@@ -546,8 +548,8 @@ namespace L1MapViewer.Controls
         {
             if (_isDragging)
             {
-                int deltaX = e.X - _dragStartPoint.X;
-                int deltaY = e.Y - _dragStartPoint.Y;
+                int deltaX = e.X() - _dragStartPoint.X;
+                int deltaY = e.Y() - _dragStartPoint.Y;
 
                 int newScrollX = _dragStartScroll.X - (int)(deltaX / _viewState.ZoomLevel);
                 int newScrollY = _dragStartScroll.Y - (int)(deltaY / _viewState.ZoomLevel);
@@ -558,19 +560,19 @@ namespace L1MapViewer.Controls
             else
             {
                 // 更新座標顯示
-                var worldPoint = ScreenToWorld(e.Location);
+                var worldPoint = ScreenToWorld(e.Location.ToPoint());
                 var (gameX, gameY) = WorldToGameCoords(worldPoint);
                 CoordinateChanged?.Invoke(this, new CoordinateChangedEventArgs(worldPoint, gameX, gameY));
 
                 // 轉發給外部處理編輯
                 MapMouseMove?.Invoke(this, new MapMouseEventArgs(
-                    e.Button, e.Location, worldPoint, gameX, gameY, 0, Control.ModifierKeys));
+                    e.Button(), e.Location.ToPoint(), worldPoint, gameX, gameY, 0, ControlCompat.ModifierKeys));
             }
         }
 
         private void MapPictureBox_MouseUp(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Middle && _isDragging)
+            if (e.GetButton() == MouseButtons.Middle && _isDragging)
             {
                 _isDragging = false;
                 this.Cursor = Cursors.Default;
@@ -579,44 +581,44 @@ namespace L1MapViewer.Controls
                 _dragRenderTimer.Start();
 
                 // 也觸發 MapMouseUp 事件，讓外部可以處理拖曳結束
-                var worldPoint = ScreenToWorld(e.Location);
+                var worldPoint = ScreenToWorld(e.Location.ToPoint());
                 var (gameX, gameY) = WorldToGameCoords(worldPoint);
                 MapMouseUp?.Invoke(this, new MapMouseEventArgs(
-                    e.Button, e.Location, worldPoint, gameX, gameY, 0, Control.ModifierKeys));
+                    e.Button(), e.Location.ToPoint(), worldPoint, gameX, gameY, 0, ControlCompat.ModifierKeys));
             }
             else
             {
                 // 轉發給外部處理編輯
-                var worldPoint = ScreenToWorld(e.Location);
+                var worldPoint = ScreenToWorld(e.Location.ToPoint());
                 var (gameX, gameY) = WorldToGameCoords(worldPoint);
                 MapMouseUp?.Invoke(this, new MapMouseEventArgs(
-                    e.Button, e.Location, worldPoint, gameX, gameY, 0, Control.ModifierKeys));
+                    e.Button(), e.Location.ToPoint(), worldPoint, gameX, gameY, 0, ControlCompat.ModifierKeys));
             }
         }
 
         private void MapPictureBox_MouseDoubleClick(object sender, MouseEventArgs e)
         {
             // 轉發給外部處理雙擊
-            var worldPoint = ScreenToWorld(e.Location);
+            var worldPoint = ScreenToWorld(e.Location.ToPoint());
             var (gameX, gameY) = WorldToGameCoords(worldPoint);
             MapMouseDoubleClick?.Invoke(this, new MapMouseEventArgs(
-                e.Button, e.Location, worldPoint, gameX, gameY, 0, Control.ModifierKeys));
+                e.Button(), e.Location.ToPoint(), worldPoint, gameX, gameY, 0, ControlCompat.ModifierKeys));
         }
 
         private void MapPanel_MouseWheel(object sender, MouseEventArgs e)
         {
             // 縮放改用按鈕控制，滾輪只處理捲動
-            if (Control.ModifierKeys == Keys.Shift)
+            if (ControlCompat.ModifierKeys == Keys.Shift)
             {
                 // Shift + 滾輪 = 水平捲動
                 int scrollAmount = (int)(100 / _viewState.ZoomLevel);
-                _viewState.ScrollBy(e.Delta > 0 ? -scrollAmount : scrollAmount, 0);
+                _viewState.ScrollBy(e.Delta.Height > 0 ? -scrollAmount : scrollAmount, 0);
             }
             else
             {
                 // 普通滾輪 = 垂直捲動
                 int scrollAmount = (int)(100 / _viewState.ZoomLevel);
-                _viewState.ScrollBy(0, e.Delta > 0 ? -scrollAmount : scrollAmount);
+                _viewState.ScrollBy(0, e.Delta.Height > 0 ? -scrollAmount : scrollAmount);
             }
 
             RequestRenderIfNeeded();
@@ -727,7 +729,7 @@ namespace L1MapViewer.Controls
         private void MapPictureBox_Paint(object sender, PaintEventArgs e)
         {
             // DEBUG: 無條件繪製邊框確認 Paint 被呼叫
-            using (var pen = new Pen(Color.Yellow, 2))
+            using (var pen = new Pen(Colors.Yellow, 2))
             {
                 e.Graphics.DrawRectangle(pen, 1, 1, _mapPictureBox.Width - 3, _mapPictureBox.Height - 3);
             }
@@ -746,14 +748,14 @@ namespace L1MapViewer.Controls
                     int viewportWidth = _mapPictureBox.Width;
                     int gap = viewportWidth - bitmapRightEdge;
 
-                    e.Graphics.InterpolationMode = System.Drawing.Drawing2D.InterpolationMode.NearestNeighbor;
+                    e.Graphics.SetInterpolationMode(InterpolationMode.NearestNeighbor);
                     e.Graphics.DrawImage(_viewportBitmap, drawX, drawY, drawW, drawH);
 
                     // DEBUG: 如果 bitmap 沒有覆蓋整個 viewport，顯示提示
                     if (gap > 10)
                     {
                         using (var font = new Font("Consolas", 9))
-                        using (var brush = new SolidBrush(Color.Orange))
+                        using (var brush = new SolidBrush(Colors.Orange))
                         {
                             string info = $"Gap: {gap}px | RenderOrigin=({_viewState.RenderOriginX},{_viewState.RenderOriginY}) | Map={_viewState.MapWidth}x{_viewState.MapHeight}";
                             e.Graphics.DrawString(info, font, brush, bitmapRightEdge + 5, 30);
@@ -765,7 +767,7 @@ namespace L1MapViewer.Controls
                     // DEBUG: 顯示狀態資訊
                     string debugInfo = $"bitmap={(_viewportBitmap != null)}, RenderW={_viewState.RenderWidth}, VS.hash={_viewState.GetHashCode()}";
                     using (var font = new Font("Consolas", 10))
-                    using (var brush = new SolidBrush(Color.Red))
+                    using (var brush = new SolidBrush(Colors.Red))
                     {
                         e.Graphics.DrawString(debugInfo, font, brush, 10, 10);
                     }

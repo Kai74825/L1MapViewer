@@ -1,7 +1,8 @@
 using System;
-using System.Drawing;
+// using System.Drawing; // Replaced with Eto.Drawing
 using System.IO;
-using System.Windows.Forms;
+using Eto.Forms;
+using Eto.Drawing;
 using L1MapViewer;
 using L1MapViewer.Helper;
 using L1MapViewer.Localization;
@@ -348,11 +349,11 @@ namespace L1FlyMapViewer
         // 狀態列座標輸入框按鍵事件
         private void toolStripJumpTextBox_KeyDown(object sender, KeyEventArgs e)
         {
-            if (e.KeyCode == Keys.Enter)
+            if (e.GetKeyCode() == Keys.Enter)
             {
                 PerformCoordinateJump();
                 e.Handled = true;
-                e.SuppressKeyPress = true;
+                e.SetSuppressKeyPress(true);
             }
         }
 
@@ -362,7 +363,7 @@ namespace L1FlyMapViewer
             if (_editState.SelectedGameX >= 0 && _editState.SelectedGameY >= 0 && !string.IsNullOrEmpty(_document.MapId))
             {
                 string moveCmd = $"移動 {_editState.SelectedGameX} {_editState.SelectedGameY} {_document.MapId}";
-                Clipboard.SetText(moveCmd);
+                ClipboardHelper.SetText(moveCmd);
                 this.toolStripStatusLabel1.Text = $"已複製: {moveCmd}";
             }
         }

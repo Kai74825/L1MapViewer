@@ -1,6 +1,8 @@
 using System;
-using System.Drawing;
-using System.Windows.Forms;
+// using System.Drawing; // Replaced with Eto.Drawing
+using Eto.Forms;
+using Eto.Drawing;
+using L1MapViewer.Compatibility;
 using L1MapViewer.Localization;
 
 namespace L1MapViewer.Forms
@@ -8,7 +10,7 @@ namespace L1MapViewer.Forms
     /// <summary>
     /// 匯出選項對話框
     /// </summary>
-    public class ExportOptionsDialog : Form
+    public class ExportOptionsDialog : WinFormsDialog
     {
         /// <summary>
         /// 匯出模式
@@ -90,8 +92,8 @@ namespace L1MapViewer.Forms
 
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
-            if (InvokeRequired)
-                Invoke(new Action(() => UpdateLocalization()));
+            if (this.GetInvokeRequired())
+                this.Invoke(new Action(() => UpdateLocalization()));
             else
                 UpdateLocalization();
         }
@@ -146,7 +148,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(240, 20),
                     Checked = !_hasSelection
                 };
-                grpMode.Controls.Add(rbWholeMap);
+                grpMode.GetControls().Add(rbWholeMap);
 
                 rbSelectedBlocks = new RadioButton
                 {
@@ -156,7 +158,7 @@ namespace L1MapViewer.Forms
                     Enabled = _hasSelection,
                     Checked = _hasSelection
                 };
-                grpMode.Controls.Add(rbSelectedBlocks);
+                grpMode.GetControls().Add(rbSelectedBlocks);
 
                 rbSelectedRegion = new RadioButton
                 {
@@ -165,7 +167,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(240, 20),
                     Enabled = _hasSelection
                 };
-                grpMode.Controls.Add(rbSelectedRegion);
+                grpMode.GetControls().Add(rbSelectedRegion);
 
                 y += 110;
             }
@@ -186,7 +188,7 @@ namespace L1MapViewer.Forms
                 Size = new Size(110, 20),
                 Checked = true
             };
-            grpLayers.Controls.Add(cbLayer1);
+            grpLayers.GetControls().Add(cbLayer1);
 
             cbLayer2 = new CheckBox
             {
@@ -195,7 +197,7 @@ namespace L1MapViewer.Forms
                 Size = new Size(110, 20),
                 Checked = true
             };
-            grpLayers.Controls.Add(cbLayer2);
+            grpLayers.GetControls().Add(cbLayer2);
 
             cbLayer3 = new CheckBox
             {
@@ -204,7 +206,7 @@ namespace L1MapViewer.Forms
                 Size = new Size(110, 20),
                 Checked = true
             };
-            grpLayers.Controls.Add(cbLayer3);
+            grpLayers.GetControls().Add(cbLayer3);
 
             cbLayer4 = new CheckBox
             {
@@ -213,7 +215,7 @@ namespace L1MapViewer.Forms
                 Size = new Size(110, 20),
                 Checked = true
             };
-            grpLayers.Controls.Add(cbLayer4);
+            grpLayers.GetControls().Add(cbLayer4);
 
             if (!_isFs3p)
             {
@@ -224,7 +226,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(110, 20),
                     Checked = true
                 };
-                grpLayers.Controls.Add(cbLayer5);
+                grpLayers.GetControls().Add(cbLayer5);
 
                 cbLayer6 = new CheckBox
                 {
@@ -233,7 +235,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(110, 20),
                     Checked = true
                 };
-                grpLayers.Controls.Add(cbLayer6);
+                grpLayers.GetControls().Add(cbLayer6);
 
                 cbLayer7 = new CheckBox
                 {
@@ -242,7 +244,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(110, 20),
                     Checked = true
                 };
-                grpLayers.Controls.Add(cbLayer7);
+                grpLayers.GetControls().Add(cbLayer7);
 
                 cbLayer8 = new CheckBox
                 {
@@ -251,7 +253,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(110, 20),
                     Checked = false  // 預設不勾選 Layer8
                 };
-                grpLayers.Controls.Add(cbLayer8);
+                grpLayers.GetControls().Add(cbLayer8);
             }
 
             // Tiles 選項
@@ -263,7 +265,7 @@ namespace L1MapViewer.Forms
                 Size = new Size(240, 20),
                 Checked = true
             };
-            grpLayers.Controls.Add(cbIncludeTiles);
+            grpLayers.GetControls().Add(cbIncludeTiles);
 
             // Layer5 選項 (僅 fs3p)
             if (_isFs3p)
@@ -275,7 +277,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(240, 20),
                     Checked = false
                 };
-                grpLayers.Controls.Add(cbIncludeLayer5);
+                grpLayers.GetControls().Add(cbIncludeLayer5);
             }
             else
             {
@@ -287,7 +289,7 @@ namespace L1MapViewer.Forms
                     Size = new Size(240, 20),
                     Checked = true  // 預設移除
                 };
-                grpLayers.Controls.Add(cbStripL8Ext);
+                grpLayers.GetControls().Add(cbStripL8Ext);
             }
 
             y += grpLayers.Height + 15;
@@ -298,7 +300,7 @@ namespace L1MapViewer.Forms
                 Text = _isFs3p ? "儲存" : "匯出",
                 Location = new Point(110, y),
                 Size = new Size(80, 28),
-                DialogResult = DialogResult.OK
+                DialogResult = DialogResult.Ok
             };
             btnExport.Click += BtnExport_Click;
             Controls.Add(btnExport);
@@ -336,10 +338,10 @@ namespace L1MapViewer.Forms
 
             // 收集 Layer Flags
             ushort flags = 0;
-            if (cbLayer1.Checked) flags |= 0x01;
-            if (cbLayer2.Checked) flags |= 0x02;
-            if (cbLayer3.Checked) flags |= 0x04;
-            if (cbLayer4.Checked) flags |= 0x08;
+            if (cbLayer1.Checked == true) flags |= 0x01;
+            if (cbLayer2.Checked == true) flags |= 0x02;
+            if (cbLayer3.Checked == true) flags |= 0x04;
+            if (cbLayer4.Checked == true) flags |= 0x08;
             if (!_isFs3p)
             {
                 if (cbLayer5?.Checked == true) flags |= 0x10;
@@ -349,7 +351,7 @@ namespace L1MapViewer.Forms
             }
             LayerFlags = flags;
 
-            IncludeTiles = cbIncludeTiles.Checked;
+            IncludeTiles = cbIncludeTiles.Checked == true;
             IncludeLayer5 = _isFs3p && cbIncludeLayer5?.Checked == true;
             StripLayer8Ext = !_isFs3p && cbStripL8Ext?.Checked == true;
         }

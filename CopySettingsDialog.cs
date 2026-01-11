@@ -1,11 +1,13 @@
 using System;
-using System.Drawing;
-using System.Windows.Forms;
+// using System.Drawing; // Replaced with Eto.Drawing
+using Eto.Forms;
+using Eto.Drawing;
+using L1MapViewer.Compatibility;
 using L1MapViewer.Localization;
 
 namespace L1FlyMapViewer
 {
-    public class CopySettingsDialog : Form
+    public class CopySettingsDialog : WinFormsDialog
     {
         private CheckBox chkLayer1 = null!;
         private CheckBox chkLayer2 = null!;
@@ -45,8 +47,8 @@ namespace L1FlyMapViewer
 
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
-            if (InvokeRequired)
-                Invoke(new Action(() => UpdateLocalization()));
+            if (this.GetInvokeRequired())
+                this.Invoke(new Action(() => UpdateLocalization()));
             else
                 UpdateLocalization();
         }
@@ -61,10 +63,10 @@ namespace L1FlyMapViewer
         {
             this.Text = "複製/刪除設定";
             this.Size = new Size(300, 340);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.StartPosition = FormStartPosition.CenterParent;
+            this.SetFormBorderStyle(FormBorderStyle.FixedDialog);
+            this.SetMaximizeBox(false);
+            this.SetMinimizeBox(false);
+            this.SetStartPosition(FormStartPosition.CenterParent);
 
             // 說明文字
             lblDescription = new Label
@@ -72,7 +74,7 @@ namespace L1FlyMapViewer
                 Text = "選擇要複製/刪除的圖層：",
                 Location = new Point(15, 15),
                 Size = new Size(260, 20),
-                Font = new Font(this.Font, FontStyle.Bold)
+                Font = new Font(SystemFonts.Default().Family, SystemFonts.Default().Size, FontStyle.Bold)
             };
 
             // Layer 1 選項
@@ -144,7 +146,7 @@ namespace L1FlyMapViewer
                 Text = "確定",
                 Location = new Point(100, 255),
                 Size = new Size(75, 28),
-                DialogResult = DialogResult.OK
+                DialogResult = DialogResult.Ok
             };
             btnOK.Click += BtnOK_Click;
 
@@ -176,21 +178,21 @@ namespace L1FlyMapViewer
 
         private void BtnOK_Click(object? sender, EventArgs e)
         {
-            if (!chkLayer1.Checked && !chkLayer2.Checked && !chkLayer3.Checked && !chkLayer4.Checked && !chkLayer5.Checked && !chkLayer7.Checked && !chkLayer8.Checked)
+            if (chkLayer1.Checked != true && chkLayer2.Checked != true && chkLayer3.Checked != true && chkLayer4.Checked != true && chkLayer5.Checked != true && chkLayer7.Checked != true && chkLayer8.Checked != true)
             {
-                MessageBox.Show(LocalizationManager.L("Message_SelectAtLeastOneLayer"),
+                WinFormsMessageBox.Show(LocalizationManager.L("Message_SelectAtLeastOneLayer"),
                     LocalizationManager.L("Title_Info"), MessageBoxButtons.OK, MessageBoxIcon.Warning);
-                this.DialogResult = DialogResult.None;
+                // Don't close the dialog
                 return;
             }
 
-            CopyLayer1 = chkLayer1.Checked;
-            CopyLayer2 = chkLayer2.Checked;
-            CopyLayer3 = chkLayer3.Checked;
-            CopyLayer4 = chkLayer4.Checked;
-            CopyLayer5 = chkLayer5.Checked;
-            CopyLayer7 = chkLayer7.Checked;
-            CopyLayer8 = chkLayer8.Checked;
+            CopyLayer1 = chkLayer1.Checked == true;
+            CopyLayer2 = chkLayer2.Checked == true;
+            CopyLayer3 = chkLayer3.Checked == true;
+            CopyLayer4 = chkLayer4.Checked == true;
+            CopyLayer5 = chkLayer5.Checked == true;
+            CopyLayer7 = chkLayer7.Checked == true;
+            CopyLayer8 = chkLayer8.Checked == true;
         }
 
         private void UpdateLocalization()

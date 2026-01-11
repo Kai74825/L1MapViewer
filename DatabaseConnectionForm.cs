@@ -1,8 +1,10 @@
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Windows.Forms;
+// using System.Drawing; // Replaced with Eto.Drawing
+using Eto.Forms;
+using Eto.Drawing;
 using MySql.Data.MySqlClient;
+using L1MapViewer.Compatibility;
 using L1MapViewer.Helper;
 using L1MapViewer.Localization;
 
@@ -28,7 +30,7 @@ namespace L1FlyMapViewer
         }
     }
 
-    public partial class DatabaseConnectionForm : Form
+    public partial class DatabaseConnectionForm : WinFormsDialog
     {
         private ListBox listConnections = null!;
         private Button btnNew = null!;
@@ -72,9 +74,9 @@ namespace L1FlyMapViewer
 
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
-            if (InvokeRequired)
+            if (this.GetInvokeRequired())
             {
-                Invoke(new Action(() => UpdateLocalization()));
+                this.Invoke(new Action(() => UpdateLocalization()));
             }
             else
             {
@@ -86,10 +88,10 @@ namespace L1FlyMapViewer
         {
             this.Text = "資料庫連線管理";
             this.Size = new Size(700, 450);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.StartPosition = FormStartPosition.CenterParent;
+            this.SetFormBorderStyle(FormBorderStyle.FixedDialog);
+            this.SetMaximizeBox(false);
+            this.SetMinimizeBox(false);
+            this.SetStartPosition(FormStartPosition.CenterParent);
 
             // 左側連線列表
             lblConnections = new Label
@@ -246,7 +248,7 @@ namespace L1FlyMapViewer
             {
                 Location = new Point(labelX, startY + spacing * 6),
                 Size = new Size(420, 30),
-                ForeColor = Color.Blue,
+                ForeColor = Colors.Blue,
                 Text = ""
             };
 
@@ -352,7 +354,7 @@ namespace L1FlyMapViewer
         {
             if (listConnections.SelectedIndex < 0)
             {
-                MessageBox.Show("請先選擇一個連線", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                WinFormsMessageBox.Show("請先選擇一個連線", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
             SetEditMode(true);
@@ -362,11 +364,11 @@ namespace L1FlyMapViewer
         {
             if (listConnections.SelectedIndex < 0)
             {
-                MessageBox.Show("請先選擇一個連線", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                WinFormsMessageBox.Show("請先選擇一個連線", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
-            if (MessageBox.Show("確定要刪除此連線設定嗎？", "確認刪除", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
+            if (WinFormsMessageBox.Show("確定要刪除此連線設定嗎？", "確認刪除", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
             {
                 connections.RemoveAt(listConnections.SelectedIndex);
                 DatabaseHelper.SaveMultipleConnectionSettings(connections);
@@ -383,9 +385,9 @@ namespace L1FlyMapViewer
 
             try
             {
-                lblStatus.ForeColor = Color.Blue;
+                lblStatus.TextColor = Colors.Blue;
                 lblStatus.Text = "正在測試連線...";
-                Application.DoEvents();
+                ApplicationHelper.DoEvents();
 
                 bool success = DatabaseHelper.TestConnection(
                     txtServer.Text.Trim(),
@@ -397,18 +399,18 @@ namespace L1FlyMapViewer
 
                 if (success)
                 {
-                    lblStatus.ForeColor = Color.Green;
+                    lblStatus.TextColor = Colors.Green;
                     lblStatus.Text = "連線成功！";
                 }
                 else
                 {
-                    lblStatus.ForeColor = Color.Red;
+                    lblStatus.TextColor = Colors.Red;
                     lblStatus.Text = "連線失敗";
                 }
             }
             catch (Exception ex)
             {
-                lblStatus.ForeColor = Color.Red;
+                lblStatus.TextColor = Colors.Red;
                 lblStatus.Text = "連線失敗: " + ex.Message;
             }
         }
@@ -432,7 +434,7 @@ namespace L1FlyMapViewer
             {
                 if (connections[i] != selectedConnection && connections[i].Name == conn.Name)
                 {
-                    MessageBox.Show("連線名稱已存在，請使用其他名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                    WinFormsMessageBox.Show("連線名稱已存在，請使用其他名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                     return;
                 }
             }
@@ -448,7 +450,7 @@ namespace L1FlyMapViewer
             LoadConnections();
             SetEditMode(false);
 
-            MessageBox.Show("儲存成功", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            WinFormsMessageBox.Show("儲存成功", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
         }
 
         private void BtnCancel_Click(object? sender, EventArgs e)
@@ -468,7 +470,7 @@ namespace L1FlyMapViewer
         {
             if (listConnections.SelectedIndex < 0)
             {
-                MessageBox.Show("請先選擇一個連線", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                WinFormsMessageBox.Show("請先選擇一個連線", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 return;
             }
 
@@ -483,7 +485,7 @@ namespace L1FlyMapViewer
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"連線失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                WinFormsMessageBox.Show($"連線失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
             }
         }
 
@@ -491,31 +493,31 @@ namespace L1FlyMapViewer
         {
             if (string.IsNullOrWhiteSpace(txtName.Text))
             {
-                MessageBox.Show("請輸入連線名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                WinFormsMessageBox.Show("請輸入連線名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(txtServer.Text))
             {
-                MessageBox.Show("請輸入伺服器位址", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                WinFormsMessageBox.Show("請輸入伺服器位址", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(txtPort.Text))
             {
-                MessageBox.Show("請輸入埠號", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                WinFormsMessageBox.Show("請輸入埠號", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(txtDatabase.Text))
             {
-                MessageBox.Show("請輸入資料庫名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                WinFormsMessageBox.Show("請輸入資料庫名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 
             if (string.IsNullOrWhiteSpace(txtUsername.Text))
             {
-                MessageBox.Show("請輸入使用者名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                WinFormsMessageBox.Show("請輸入使用者名稱", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Warning);
                 return false;
             }
 

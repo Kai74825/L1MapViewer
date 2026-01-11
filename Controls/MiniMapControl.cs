@@ -1,8 +1,10 @@
 using System;
 using System.ComponentModel;
-using System.Drawing;
+// using System.Drawing; // Replaced with Eto.Drawing
 using System.Threading.Tasks;
-using System.Windows.Forms;
+using Eto.Forms;
+using Eto.Drawing;
+using L1MapViewer.Compatibility;
 using L1MapViewer.Helper;
 using L1MapViewer.Models;
 using L1MapViewer.Rendering;
@@ -53,7 +55,7 @@ namespace L1MapViewer.Controls
         /// 視窗框顏色
         /// </summary>
         [DefaultValue(typeof(Color), "Red")]
-        public Color ViewportRectColor { get; set; } = Color.Red;
+        public Color ViewportRectColor { get; set; } = Colors.Red;
 
         /// <summary>
         /// 視窗框寬度
@@ -139,14 +141,14 @@ namespace L1MapViewer.Controls
         private void InitializeComponents()
         {
             this.Size = new Size(MiniMapSize, MiniMapSize);
-            this.BackColor = Color.Black;
-            this.TabStop = false; // 不搶奪鍵盤焦點
+            this.BackgroundColor = Colors.Black;
+            this.SetTabStop(false); // 不搶奪鍵盤焦點
 
             _pictureBox = new PictureBox
             {
                 Dock = DockStyle.Fill,
                 SizeMode = PictureBoxSizeMode.Zoom,
-                BackColor = Color.Black,
+                BackColor = Colors.Black,
                 TabStop = false // 不搶奪鍵盤焦點
             };
 
@@ -155,7 +157,7 @@ namespace L1MapViewer.Controls
             _pictureBox.MouseUp += PictureBox_MouseUp;
             _pictureBox.Paint += PictureBox_Paint;
 
-            this.Controls.Add(_pictureBox);
+            this.GetControls().Add(_pictureBox);
         }
 
         #endregion
@@ -222,12 +224,12 @@ namespace L1MapViewer.Controls
         /// </summary>
         public void ShowPlaceholder(string text = "小地圖繪製中...")
         {
-            var placeholder = new Bitmap(MiniMapSize, MiniMapSize);
-            using (var g = Graphics.FromImage(placeholder))
+            var placeholder = new Bitmap(new Size(MiniMapSize, MiniMapSize), Eto.Drawing.PixelFormat.Format32bppRgba);
+            using (var g = GraphicsHelper.FromImage(placeholder))
             {
                 g.Clear(Color.FromArgb(30, 30, 30));
                 using (var font = new Font("Microsoft JhengHei", 12))
-                using (var brush = new SolidBrush(Color.Gray))
+                using (var brush = new SolidBrush(Eto.Drawing.Colors.Gray))
                 {
                     var size = g.MeasureString(text, font);
                     g.DrawString(text, font, brush,
@@ -266,14 +268,14 @@ namespace L1MapViewer.Controls
 
         private void PictureBox_MouseDown(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            if (e.GetButton() == MouseButtons.Left)
             {
                 _isDragging = true;
-                NavigateToPosition(e.Location);
+                NavigateToPosition(e.Location.ToPoint());
             }
-            else if (e.Button == MouseButtons.Right)
+            else if (e.GetButton() == MouseButtons.Right)
             {
-                HandleRightClick(e.Location);
+                HandleRightClick(e.Location.ToPoint());
             }
         }
 
@@ -281,13 +283,13 @@ namespace L1MapViewer.Controls
         {
             if (_isDragging)
             {
-                NavigateToPosition(e.Location);
+                NavigateToPosition(e.Location.ToPoint());
             }
         }
 
         private void PictureBox_MouseUp(object sender, MouseEventArgs e)
         {
-            if (e.Button == MouseButtons.Left)
+            if (e.GetButton() == MouseButtons.Left)
             {
                 _isDragging = false;
             }
@@ -452,18 +454,11 @@ namespace L1MapViewer.Controls
             // 如果有 document，重新渲染小地圖
             if (_document != null)
             {
-                // 使用 BeginInvoke 確保在 UI 執行緒上執行
-                if (this.InvokeRequired)
-                {
-                    this.BeginInvoke((MethodInvoker)delegate
-                    {
-                        UpdateMiniMap(_document);
-                    });
-                }
-                else
+                // 使用 Application.Instance.Invoke 確保在 UI 執行緒上執行
+                Eto.Forms.Application.Instance.Invoke(() =>
                 {
                     UpdateMiniMap(_document);
-                }
+                });
             }
         }
 

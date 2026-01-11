@@ -1,8 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
-using System.Drawing.Imaging;
+// using System.Drawing; // Replaced with Eto.Drawing
+// using System.Drawing.Imaging; // Replaced with SkiaSharp
 using System.IO;
 using System.IO.Compression;
 using System.Linq;
@@ -5000,10 +5000,10 @@ L1MapViewer CLI - S32 檔案解析工具
             Console.WriteLine($"產生圖示: {outputPath}");
 
             using (var bmp = new Bitmap(256, 256))
-            using (var g = Graphics.FromImage(bmp))
+            using (var g = GraphicsHelper.FromImage(bmp))
             {
-                g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
-                g.Clear(Color.Transparent);
+                g.SetSmoothingMode(SmoothingMode.AntiAlias);
+                g.Clear(Colors.Transparent);
 
                 int cx = 128, cy = 128;
                 int r = 50;  // 菱形半徑（高度）
@@ -5016,7 +5016,7 @@ L1MapViewer CLI - S32 檔案解析工具
                 DrawDiamond(g, cx, cy + r * 2, r, Color.FromArgb(100, 110, 100));   // 下 - 石灰
 
                 // 中間菱形加白框表示選中
-                DrawDiamondBorder(g, cx, cy, r, Color.White, 4);
+                DrawDiamondBorder(g, cx, cy, r, Colors.White, 4);
 
                 // 儲存 PNG
                 bmp.Save(outputPath, ImageFormat.Png);
@@ -5492,7 +5492,7 @@ L1MapViewer CLI - S32 檔案解析工具
                         string outputPath = Path.Combine(mapPath, $"minimap_test.png");
                         using (var bmp24 = new Bitmap(bitmap.Width, bitmap.Height, PixelFormat.Format24bppRgb))
                         {
-                            using (var g = Graphics.FromImage(bmp24))
+                            using (var g = GraphicsHelper.FromImage(bmp24))
                             {
                                 g.DrawImage(bitmap, 0, 0);
                             }
@@ -6280,11 +6280,11 @@ L1MapViewer CLI - S32 檔案解析工具
                 var worldRect = new Rectangle(centerX - testWidth / 2, centerY - testHeight / 2, testWidth, testHeight);
                 Console.WriteLine($"測試渲染區域: {worldRect}");
 
-                using (var bitmap = new Bitmap(testWidth, testHeight, System.Drawing.Imaging.PixelFormat.Format32bppArgb))
-                using (var g = Graphics.FromImage(bitmap))
+                using (var bitmap = new Bitmap(testWidth, testHeight, PixelFormat.Format32bppArgb))
+                using (var g = GraphicsHelper.FromImage(bitmap))
                 {
-                    g.Clear(Color.DarkGray);
-                    g.SmoothingMode = System.Drawing.Drawing2D.SmoothingMode.AntiAlias;
+                    g.Clear(Colors.DarkGrey);
+                    g.SetSmoothingMode(SmoothingMode.AntiAlias);
 
                     int drawnCount = 0;
                     foreach (var item in targetS32.Layer8)
@@ -6322,7 +6322,7 @@ L1MapViewer CLI - S32 檔案解析工具
 
                     string outputPath = Path.Combine(Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location), "tests", "layer8_test.png");
                     Directory.CreateDirectory(Path.GetDirectoryName(outputPath));
-                    bitmap.Save(outputPath);
+                    bitmap.Save(outputPath, ImageFormat.Png);
                     Console.WriteLine($"輸出: {outputPath}");
                 }
             }

@@ -3,9 +3,9 @@ using L1FlyMapViewer;
 using L1MapViewer;
 using L1MapViewer.CLI;
 using L1MapViewer.Localization;
-using System.Text;
-
 using System.Diagnostics;
+using Eto;
+using Eto.Forms;
 
 namespace L1MapViewerCore;
 
@@ -51,15 +51,91 @@ static class Program
         LocalizationManager.Initialize();
         LogPerf("[PROGRAM] Localization initialized: " + LocalizationManager.CurrentLanguage);
 
-        ApplicationConfiguration.Initialize();
-        LogPerf("[PROGRAM] ApplicationConfiguration.Initialize() done");
+        // 初始化 Eto.Forms 平台
+        LogPerf("[PROGRAM] Initializing Eto.Forms platform...");
+        Platform platform;
+        try
+        {
+            platform = Platform.Detect;
+        }
+        catch (InvalidOperationException)
+        {
+            // Platform.Detect failed, try to load platform manually based on OS
+            var basePath = AppContext.BaseDirectory;
+            if (OperatingSystem.IsMacOS())
+            {
+                // Try native macOS platform first, fall back to GTK
+                try
+                {
+                    var assemblyPath = Path.Combine(basePath, "Eto.macOS.dll");
+                    if (File.Exists(assemblyPath))
+                    {
+                        var macPlatformAssembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                        var platformType = macPlatformAssembly.GetType("Eto.Mac.Platform");
+                        platform = (Platform)Activator.CreateInstance(platformType!)!;
+                    }
+                    else
+                    {
+                        throw new FileNotFoundException("Eto.macOS.dll not found");
+                    }
+                }
+                catch (Exception ex)
+                {
+                    // Fall back to GTK on macOS (requires GTK installed via Homebrew: brew install gtk+3)
+                    Console.WriteLine($"Note: Native macOS platform failed ({ex.GetType().Name}). Trying GTK backend...");
+                    Console.WriteLine("For native look, install: sudo dotnet workload install macos");
+                    Console.WriteLine("For GTK backend, install: brew install gtk+3");
+
+                    try
+                    {
+                        var gtkPath = Path.Combine(basePath, "Eto.Gtk.dll");
+                        var gtkPlatformAssembly = System.Reflection.Assembly.LoadFrom(gtkPath);
+                        var platformType = gtkPlatformAssembly.GetType("Eto.GtkSharp.Platform");
+                        platform = (Platform)Activator.CreateInstance(platformType!)!;
+                    }
+                    catch (Exception gtkEx)
+                    {
+                        Console.WriteLine();
+                        Console.WriteLine("ERROR: Could not initialize any UI platform on macOS.");
+                        Console.WriteLine();
+                        Console.WriteLine("Please install ONE of the following:");
+                        Console.WriteLine("  Option 1 (Native): sudo dotnet workload install macos");
+                        Console.WriteLine("  Option 2 (GTK):    brew install gtk+3");
+                        Console.WriteLine();
+                        throw new InvalidOperationException($"No UI platform available. Native: {ex.Message}, GTK: {gtkEx.Message}");
+                    }
+                }
+            }
+            else if (OperatingSystem.IsWindows())
+            {
+                var assemblyPath = Path.Combine(basePath, "Eto.Wpf.dll");
+                var wpfPlatformAssembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                var platformType = wpfPlatformAssembly.GetType("Eto.Wpf.Platform");
+                platform = (Platform)Activator.CreateInstance(platformType!)!;
+            }
+            else if (OperatingSystem.IsLinux())
+            {
+                var assemblyPath = Path.Combine(basePath, "Eto.Gtk.dll");
+                var gtkPlatformAssembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+                var platformType = gtkPlatformAssembly.GetType("Eto.GtkSharp.Platform");
+                platform = (Platform)Activator.CreateInstance(platformType!)!;
+            }
+            else
+            {
+                throw;
+            }
+        }
+        LogPerf($"[PROGRAM] Platform: {platform.ID}");
+
+        using var app = new Application(platform);
+        LogPerf("[PROGRAM] Eto Application created");
 
         LogPerf("[PROGRAM] Creating MapForm...");
         var form = new MapForm();
         LogPerf("[PROGRAM] MapForm created");
 
         LogPerf("[PROGRAM] Application.Run() starting...");
-        Application.Run(form);
+        app.Run(form);
         return 0;
     }
 

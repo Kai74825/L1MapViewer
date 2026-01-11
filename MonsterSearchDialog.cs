@@ -1,12 +1,14 @@
 using System;
-using System.Drawing;
-using System.Windows.Forms;
+// using System.Drawing; // Replaced with Eto.Drawing
+using Eto.Forms;
+using Eto.Drawing;
+using L1MapViewer.Compatibility;
 using L1MapViewer.Helper;
 using L1MapViewer.Localization;
 
 namespace L1FlyMapViewer
 {
-    public class MonsterSearchDialog : Form
+    public class MonsterSearchDialog : WinFormsDialog
     {
         private TextBox txtSearch = null!;
         private ListBox lstMonsters = null!;
@@ -27,8 +29,8 @@ namespace L1FlyMapViewer
 
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
-            if (InvokeRequired)
-                Invoke(new Action(() => UpdateLocalization()));
+            if (this.GetInvokeRequired())
+                this.Invoke(new Action(() => UpdateLocalization()));
             else
                 UpdateLocalization();
         }
@@ -37,10 +39,10 @@ namespace L1FlyMapViewer
         {
             this.Text = "搜尋怪物";
             this.Size = new Size(400, 500);
-            this.FormBorderStyle = FormBorderStyle.FixedDialog;
-            this.MaximizeBox = false;
-            this.MinimizeBox = false;
-            this.StartPosition = FormStartPosition.CenterParent;
+            this.SetFormBorderStyle(FormBorderStyle.FixedDialog);
+            this.SetMaximizeBox(false);
+            this.SetMinimizeBox(false);
+            this.SetStartPosition(FormStartPosition.CenterParent);
 
             // 搜尋框
             lblSearch = new Label
@@ -71,7 +73,7 @@ namespace L1FlyMapViewer
                 Text = "確定",
                 Location = new Point(215, 420),
                 Size = new Size(75, 30),
-                DialogResult = DialogResult.OK
+                DialogResult = DialogResult.Ok
             };
             btnConfirm.Click += (s, e) => ConfirmSelection();
 
@@ -108,7 +110,8 @@ namespace L1FlyMapViewer
                     {
                         int npcId = Convert.ToInt32(reader["npcid"]);
                         string name = reader["name"].ToString();
-                        lstMonsters.Items.Add(new MonsterItem { Id = npcId, Name = name });
+                        var item = new MonsterItem { Id = npcId, Name = name };
+                        lstMonsters.Items.Add(new Eto.Forms.ListItem { Text = item.ToString(), Tag = item });
                     }
                 }
             }
@@ -125,12 +128,12 @@ namespace L1FlyMapViewer
 
         private void ConfirmSelection()
         {
-            if (lstMonsters.SelectedItem is MonsterItem item)
+            var selectedItem = lstMonsters.SelectedValue as Eto.Forms.ListItem;
+            if (selectedItem?.Tag is MonsterItem item)
             {
                 SelectedMonsterId = item.Id;
                 SelectedMonsterName = item.Name;
-                this.DialogResult = DialogResult.OK;
-                this.Close();
+                Close(Eto.Forms.DialogResult.Ok);
             }
         }
 

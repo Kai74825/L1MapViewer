@@ -269,7 +269,7 @@ namespace L1MapViewer.Models
     {
         public int TileId { get; set; }
         public int IndexId { get; set; }
-        public System.Drawing.Bitmap? Thumbnail { get; set; }
+        public Bitmap? Thumbnail { get; set; }
         public int UsageCount { get; set; }
     }
 
