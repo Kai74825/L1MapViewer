@@ -9064,14 +9064,16 @@ namespace L1FlyMapViewer
                 _renderCache.Layer8AnimFrame[key] = 0;
             }
 
-            Image frame = frames[frameIdx % frames.Count];
+            var frame = frames[frameIdx % frames.Count];
 
-            // 繪製 SPR（置中於標記位置）
-            g.DrawImage(frame, x - frame.Width / 2, y - frame.Height / 2);
+            // 繪製 SPR（使用 SPR 檔案中的 offset）
+            int drawX = x + frame.XOffset;
+            int drawY = y + frame.YOffset;
+            g.DrawImage(frame.Image, drawX, drawY);
         }
 
-        // 載入 Layer8 SPR 帧（支援多 idx 檔案）
-        private List<Image> LoadLayer8SprFrames(int sprId)
+        // 載入 Layer8 SPR 帧（支援多 idx 檔案，保留 offset）
+        private List<L1MapViewer.Models.Layer8Frame> LoadLayer8SprFrames(int sprId)
         {
             string sprKey = $"{sprId}-0.spr";
 
@@ -9094,12 +9096,17 @@ namespace L1FlyMapViewer
                         var rawFrames = Lin.Helper.Core.Sprite.SprReader.LoadRaw(sprData);
                         if (rawFrames != null && rawFrames.Length > 0)
                         {
-                            var result = new List<Image>();
+                            var result = new List<L1MapViewer.Models.Layer8Frame>();
                             foreach (var f in rawFrames)
                             {
                                 if (f.Width > 0 && f.Height > 0 && f.Pixels != null)
                                 {
-                                    result.Add(CreateBitmapFromRgbaLayer8(f.Pixels, f.Width, f.Height));
+                                    result.Add(new L1MapViewer.Models.Layer8Frame
+                                    {
+                                        Image = CreateBitmapFromRgbaLayer8(f.Pixels, f.Width, f.Height),
+                                        XOffset = f.XOffset,
+                                        YOffset = f.YOffset
+                                    });
                                 }
                             }
                             if (result.Count > 0)
@@ -9110,7 +9117,7 @@ namespace L1FlyMapViewer
                 catch { }
             }
 
-            return new List<Image>();  // 找不到
+            return new List<L1MapViewer.Models.Layer8Frame>();  // 找不到
         }
 
         // 將 RGBA 像素轉換為 BGRA 並建立 Bitmap（Layer8 用）
@@ -10407,9 +10414,9 @@ namespace L1FlyMapViewer
                     int markerWorldX = mx + baseX + layer1X * 24 + layer1Y * 24 + 12;
                     int markerWorldY = my + baseY + layer1Y * 12 + 12;
 
-                    // SPR 位置：偏移 (20, 30)
-                    int sprWorldX = markerWorldX + 20;
-                    int sprWorldY = markerWorldY + 30;
+                    // SPR 位置：使用 marker 位置（offset 由 SPR 檔案提供）
+                    int sprWorldX = markerWorldX;
+                    int sprWorldY = markerWorldY;
 
                     // 轉為螢幕座標
                     var markerScreenPoint = _mapViewerControl.WorldToScreen(new Point(markerWorldX, markerWorldY));
@@ -10484,15 +10491,15 @@ namespace L1FlyMapViewer
                 _renderCache.Layer8AnimFrame[key] = 0;
             }
 
-            Image frame = frames[frameIdx % frames.Count];
+            var frame = frames[frameIdx % frames.Count];
             float scale = (float)_viewState.ZoomLevel;
-            int drawW = (int)(frame.Width * scale);
-            int drawH = (int)(frame.Height * scale);
+            int drawW = (int)(frame.Image.Width * scale);
+            int drawH = (int)(frame.Image.Height * scale);
 
-            // 基準點：下中 (anchor = 2)
-            int drawX = x - drawW / 2;
-            int drawY = y - drawH;
-            g.DrawImage(frame, drawX, drawY, drawW, drawH);
+            // 使用 SPR 檔案中的 offset（縮放後）
+            int drawX = x + (int)Math.Round(frame.XOffset * scale);
+            int drawY = y + (int)Math.Round(frame.YOffset * scale);
+            g.DrawImage(frame.Image, drawX, drawY, drawW, drawH);
         }
 
         // MapViewerControl 座標變更事件 - 更新狀態列

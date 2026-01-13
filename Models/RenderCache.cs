@@ -6,6 +6,16 @@ using System.Collections.Generic;
 namespace L1MapViewer.Models
 {
     /// <summary>
+    /// Layer8 SPR 幀結構（包含圖片和偏移量）
+    /// </summary>
+    public sealed class Layer8Frame
+    {
+        public Image Image { get; set; }
+        public int XOffset { get; set; }
+        public int YOffset { get; set; }
+    }
+
+    /// <summary>
     /// 渲染快取 - 管理各種 Bitmap 和 Tile 資料快取
     /// </summary>
     public class RenderCache : IDisposable
@@ -25,7 +35,7 @@ namespace L1MapViewer.Models
         /// <summary>
         /// Layer8 SPR 動畫快取 - key: sprId, value: frames
         /// </summary>
-        public Dictionary<int, List<Image>> Layer8SprCache { get; } = new Dictionary<int, List<Image>>();
+        public Dictionary<int, List<Layer8Frame>> Layer8SprCache { get; } = new Dictionary<int, List<Layer8Frame>>();
 
         /// <summary>
         /// Layer8 動畫幀索引 - key: (s32Path, index), value: current frame
@@ -127,9 +137,9 @@ namespace L1MapViewer.Models
         {
             foreach (var kvp in Layer8SprCache)
             {
-                foreach (var img in kvp.Value)
+                foreach (var frame in kvp.Value)
                 {
-                    img?.Dispose();
+                    frame?.Image?.Dispose();
                 }
             }
             Layer8SprCache.Clear();
