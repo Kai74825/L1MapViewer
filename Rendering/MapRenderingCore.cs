@@ -188,6 +188,21 @@ namespace L1MapViewer.Rendering
         }
 
         /// <summary>
+        /// 使用 MapDocument 渲染小地圖（SkiaSharp 版本）
+        /// </summary>
+        public SkiaSharp.SKBitmap RenderMiniMapSK(MapDocument document, int targetSize, out MiniMapRenderer.MiniMapBounds bounds)
+        {
+            return _miniMapRenderer.RenderMiniMapSK(
+                document.MapPixelWidth,
+                document.MapPixelHeight,
+                targetSize,
+                document.S32Files,
+                document.CheckedS32Files,
+                out _,
+                out bounds);
+        }
+
+        /// <summary>
         /// 渲染地圖並匯出為圖片位元組
         /// </summary>
         /// <param name="worldRect">要渲染的區域</param>
