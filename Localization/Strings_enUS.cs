@@ -300,6 +300,7 @@ namespace L1MapViewer.Localization
             // === Form Titles ===
             { "Form_MapEditor_Title", "Map Editor" },
             { "Form_ExportOptions_Title", "Export Options" },
+            { "Form_ExportFs32_Title", "Export FS32 Map Package" },
             { "Form_CopySettings_Title", "Copy Settings" },
             { "Form_MaterialBrowser_Title", "Material Browser" },
 

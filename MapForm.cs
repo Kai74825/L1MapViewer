@@ -12199,21 +12199,39 @@ namespace L1FlyMapViewer
         /// <returns>list.spr 路徑，若使用者取消或無 SPR 則返回 null</returns>
         private (string sprListPath, HashSet<int> sprIds) PrepareLayer8SprPackaging(IEnumerable<S32Data> s32List, ushort layerFlags)
         {
+            _logger.Debug($"[PrepareLayer8SprPackaging] layerFlags=0x{layerFlags:X4}, Layer8 bit={(layerFlags & 0x80) != 0}");
+
             if ((layerFlags & 0x80) == 0)  // Layer8 未勾選
+            {
+                _logger.Debug("[PrepareLayer8SprPackaging] Layer8 未勾選，跳過");
                 return (null, null);
+            }
 
             var sprIds = new HashSet<int>();
+            int s32Count = 0;
+            int totalL8Items = 0;
             foreach (var s32 in s32List)
             {
-                foreach (var l8 in s32.Layer8)
+                s32Count++;
+                _logger.Debug($"[PrepareLayer8SprPackaging] S32[{s32Count}]: {s32.FilePath}, Layer8.Count={s32.Layer8?.Count ?? 0}");
+                if (s32.Layer8 != null)
                 {
-                    if (l8.SprId > 0)
-                        sprIds.Add(l8.SprId);
+                    foreach (var l8 in s32.Layer8)
+                    {
+                        totalL8Items++;
+                        if (l8.SprId > 0)
+                            sprIds.Add(l8.SprId);
+                    }
                 }
             }
 
+            _logger.Debug($"[PrepareLayer8SprPackaging] 共 {s32Count} 個 S32, {totalL8Items} 個 Layer8 項目, {sprIds.Count} 個不同 SPR ID");
+
             if (sprIds.Count == 0)
+            {
+                _logger.Debug("[PrepareLayer8SprPackaging] 沒有找到任何 SPR ID，跳過");
                 return (null, null);
+            }
 
             var sprResult = WinFormsMessageBox.Show(
                 $"Layer8 包含 {sprIds.Count} 個 SPR 項目。\n\n" +

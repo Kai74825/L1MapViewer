@@ -601,6 +601,17 @@ public class WinFormsRadioButton : Eto.Forms.RadioButton
     public Color BackColor { get => BackgroundColor; set => BackgroundColor = value; }
     public Color ForeColor { get => TextColor; set => TextColor = value; }
 
+    /// <summary>
+    /// 預設建構子
+    /// </summary>
+    public WinFormsRadioButton() : base() { }
+
+    /// <summary>
+    /// 建構子 - 連結到同一群組的 RadioButton
+    /// </summary>
+    /// <param name="controller">群組中的第一個 RadioButton</param>
+    public WinFormsRadioButton(Eto.Forms.RadioButton controller) : base(controller) { }
+
     // CheckedChanged event - wrap WinForms EventHandler to Eto EventHandler<EventArgs>
     public new event EventHandler CheckedChanged
     {

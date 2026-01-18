@@ -445,7 +445,7 @@ L1MapViewer CLI - S32 檔案解析工具
             Console.WriteLine($"Loading {pngFiles.Count} thumbnails into GridView...");
 
             var imageList = new L1MapViewer.Compatibility.ImageList();
-            imageList.ImageSize = new Size(80, 80);
+            imageList.ImageSize = new Size(40, 40);  // 縮小縮圖大小
 
             foreach (var file in pngFiles)
             {

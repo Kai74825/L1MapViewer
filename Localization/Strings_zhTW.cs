@@ -300,6 +300,7 @@ namespace L1MapViewer.Localization
             // === Form Titles ===
             { "Form_MapEditor_Title", "地圖編輯器" },
             { "Form_ExportOptions_Title", "匯出選項" },
+            { "Form_ExportFs32_Title", "匯出 FS32 地圖包" },
             { "Form_CopySettings_Title", "複製設定" },
             { "Form_MaterialBrowser_Title", "素材庫瀏覽器" },
 

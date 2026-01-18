@@ -300,6 +300,7 @@ namespace L1MapViewer.Localization
             // === Form Titles ===
             { "Form_MapEditor_Title", "맵 에디터" },
             { "Form_ExportOptions_Title", "내보내기 옵션" },
+            { "Form_ExportFs32_Title", "FS32 맵 패키지 내보내기" },
             { "Form_CopySettings_Title", "설정 복사" },
             { "Form_MaterialBrowser_Title", "소재 브라우저" },
 
