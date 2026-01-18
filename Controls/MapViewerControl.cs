@@ -186,12 +186,7 @@ namespace L1MapViewer.Controls
         public event EventHandler<MapMouseEventArgs> MapMouseDoubleClick;
 
         /// <summary>
-        /// 繪製覆蓋層事件（讓 MapForm 繪製 L8 動畫和編輯層）
-        /// </summary>
-        public event EventHandler<PaintEventArgs> PaintOverlay;
-
-        /// <summary>
-        /// SK 繪製覆蓋層 callback（讓 MapForm 繪製選取格子等編輯層）
+        /// SK 繪製覆蓋層 callback（讓 MapForm 繪製 Layer8、選取格子等覆蓋層）
         /// 參數: (SKCanvas canvas, float zoomLevel, int scrollX, int scrollY)
         /// </summary>
         public Action<SKCanvas, float, int, int> PaintOverlaySK { get; set; }

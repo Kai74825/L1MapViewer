@@ -1,16 +1,27 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using SkiaSharp;
 // using System.Drawing; // Replaced with Eto.Drawing
 
 namespace L1MapViewer.Models
 {
     /// <summary>
-    /// Layer8 SPR 幀結構（包含圖片和偏移量）
+    /// Layer8 SPR 幀結構（包含圖片和偏移量）- Eto.Drawing 版本
     /// </summary>
     public sealed class Layer8Frame
     {
         public Image Image { get; set; }
+        public int XOffset { get; set; }
+        public int YOffset { get; set; }
+    }
+
+    /// <summary>
+    /// Layer8 SPR 幀結構（包含圖片和偏移量）- SkiaSharp 版本
+    /// </summary>
+    public sealed class Layer8FrameSK
+    {
+        public SKBitmap Image { get; set; }
         public int XOffset { get; set; }
         public int YOffset { get; set; }
     }
@@ -33,9 +44,14 @@ namespace L1MapViewer.Models
         // 小地圖 Bitmap 已移至 MiniMapControl 內部管理
 
         /// <summary>
-        /// Layer8 SPR 動畫快取 - key: sprId, value: frames
+        /// Layer8 SPR 動畫快取 - key: sprId, value: frames (Eto.Drawing 版本)
         /// </summary>
         public Dictionary<int, List<Layer8Frame>> Layer8SprCache { get; } = new Dictionary<int, List<Layer8Frame>>();
+
+        /// <summary>
+        /// Layer8 SPR 動畫快取 - key: sprId, value: frames (SkiaSharp 版本)
+        /// </summary>
+        public Dictionary<int, List<Layer8FrameSK>> Layer8SprCacheSK { get; } = new Dictionary<int, List<Layer8FrameSK>>();
 
         /// <summary>
         /// Layer8 動畫幀索引 - key: (s32Path, index), value: current frame

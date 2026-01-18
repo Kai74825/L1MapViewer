@@ -732,9 +732,213 @@ namespace L1FlyMapViewer
             _logger.Debug($"[HIGHLIGHT-SK] Done drawing at ({X},{Y})");
         }
 
-        // 繪製選取的格子（SK 版本）- 用於 MapViewerControl.PaintOverlaySK callback
-        // 參考 DrawSelectedCells
+        // PaintOverlaySK callback - 繪製所有覆蓋層（Layer8、選取格子等）
         private void DrawSelectedCellsSK(SKCanvas canvas, float zoomLevel, int scrollX, int scrollY)
+        {
+            // 繪製 Layer8 標記和 SPR 動畫
+            if (_viewState.ShowLayer8)
+            {
+                DrawLayer8OverlaySK(canvas, zoomLevel, scrollX, scrollY);
+            }
+
+            // 繪製選取的格子
+            DrawSelectedCellsOnlySK(canvas, zoomLevel, scrollX, scrollY);
+        }
+
+        // 繪製 Layer8 覆蓋層（SK 版本）
+        // 參考 DrawLayer8OverlayOnControl
+        private void DrawLayer8OverlaySK(SKCanvas canvas, float zoomLevel, int scrollX, int scrollY)
+        {
+            if (_document?.S32Files == null || _document.S32Files.Count == 0) return;
+
+            int viewportWidth = (int)canvas.LocalClipBounds.Width;
+            int viewportHeight = (int)canvas.LocalClipBounds.Height;
+
+            foreach (var s32Data in _document.S32Files.Values)
+            {
+                if (s32Data.Layer8.Count == 0) continue;
+
+                int[] loc = s32Data.SegInfo.GetLoc(1.0);
+                int mx = loc[0];
+                int my = loc[1];
+
+                for (int i = 0; i < s32Data.Layer8.Count; i++)
+                {
+                    var item = s32Data.Layer8[i];
+
+                    // Layer8 X,Y 是絕對遊戲座標，先轉為本地座標
+                    int localLayer3X = item.X - s32Data.SegInfo.nLinBeginX;
+                    int localLayer3Y = item.Y - s32Data.SegInfo.nLinBeginY;
+
+                    if (localLayer3X < 0 || localLayer3X > 63 || localLayer3Y < 0 || localLayer3Y > 63)
+                        continue;
+
+                    int layer1X = localLayer3X * 2;
+                    int layer1Y = localLayer3Y;
+
+                    int baseX = -24 * (layer1X / 2);
+                    int baseY = 63 * 12 - 12 * (layer1X / 2);
+
+                    // Marker 位置：格子中心 (+12, +12)
+                    int markerWorldX = mx + baseX + layer1X * 24 + layer1Y * 24 + 12;
+                    int markerWorldY = my + baseY + layer1Y * 12 + 12;
+
+                    // SPR 位置：格子左上角（offset 由 SPR 檔案提供）
+                    int sprWorldX = mx + baseX + layer1X * 24 + layer1Y * 24;
+                    int sprWorldY = my + baseY + layer1Y * 12;
+
+                    // 轉為螢幕座標
+                    float markerX = (markerWorldX - scrollX) * zoomLevel;
+                    float markerY = (markerWorldY - scrollY) * zoomLevel;
+                    float sprX = (sprWorldX - scrollX) * zoomLevel;
+                    float sprY = (sprWorldY - scrollY) * zoomLevel;
+
+                    // 檢查是否在可見範圍內
+                    if (markerX < -50 || markerX > viewportWidth + 50 || markerY < -50 || markerY > viewportHeight + 50)
+                        continue;
+
+                    bool isEnabled = _editState.EnabledLayer8Items.Contains((s32Data.FilePath, i));
+
+                    // 繪製標記（圓點）- 受 ShowLayer8Marker 控制
+                    float markerRadius = Math.Max(5, 10 * zoomLevel);
+
+                    if (_viewState.ShowLayer8Marker)
+                    {
+                        if (isEnabled)
+                        {
+                            // 啟用狀態：灰色半透明 marker
+                            using var fillPaint = new SKPaint
+                            {
+                                IsAntialias = true,
+                                Style = SKPaintStyle.Fill,
+                                Color = new SKColor(128, 128, 128, 25)
+                            };
+                            using var strokePaint = new SKPaint
+                            {
+                                IsAntialias = true,
+                                Style = SKPaintStyle.Stroke,
+                                StrokeWidth = 1,
+                                Color = new SKColor(255, 255, 255, 50)
+                            };
+                            canvas.DrawCircle(markerX, markerY, markerRadius, fillPaint);
+                            canvas.DrawCircle(markerX, markerY, markerRadius, strokePaint);
+                        }
+                        else
+                        {
+                            // 停用狀態：橙色實心 marker
+                            using var fillPaint = new SKPaint
+                            {
+                                IsAntialias = true,
+                                Style = SKPaintStyle.Fill,
+                                Color = new SKColor(255, 165, 0)  // Orange
+                            };
+                            using var strokePaint = new SKPaint
+                            {
+                                IsAntialias = true,
+                                Style = SKPaintStyle.Stroke,
+                                StrokeWidth = 1,
+                                Color = SKColors.White
+                            };
+                            canvas.DrawCircle(markerX, markerY, markerRadius, fillPaint);
+                            canvas.DrawCircle(markerX, markerY, markerRadius, strokePaint);
+                        }
+
+                        // 顯示 SprId
+                        float textSize = Math.Max(6, 8 * zoomLevel);
+                        using var textPaint = new SKPaint
+                        {
+                            IsAntialias = true,
+                            TextSize = textSize,
+                            Color = SKColors.White,
+                            Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold)
+                        };
+                        canvas.DrawText(item.SprId.ToString(), markerX + markerRadius + 2, markerY + textSize / 3, textPaint);
+                    }
+
+                    // 繪製 SPR 動畫 - 受 ShowLayer8Spr 控制
+                    if (_viewState.ShowLayer8Spr && isEnabled)
+                    {
+                        DrawLayer8SpriteSK(canvas, item.SprId, sprX, sprY, zoomLevel, s32Data.FilePath, i);
+                    }
+                }
+            }
+        }
+
+        // 繪製 Layer8 SPR 動畫帧（SK 版本）
+        private void DrawLayer8SpriteSK(SKCanvas canvas, int sprId, float x, float y, float zoomLevel, string s32Path, int itemIndex)
+        {
+            // 使用 SKBitmap 快取
+            if (!_renderCache.Layer8SprCacheSK.TryGetValue(sprId, out var skFrames))
+            {
+                // 從原始 Eto.Drawing.Image 轉換為 SKBitmap
+                if (!_renderCache.Layer8SprCache.TryGetValue(sprId, out var etoFrames))
+                {
+                    etoFrames = LoadLayer8SprFrames(sprId);
+                    _renderCache.Layer8SprCache[sprId] = etoFrames;
+                }
+
+                skFrames = new List<Layer8FrameSK>();
+                if (etoFrames != null)
+                {
+                    foreach (var f in etoFrames)
+                    {
+                        if (f.Image is Bitmap bmp)
+                        {
+                            var skBitmap = EtoBitmapToSKBitmap(bmp);
+                            if (skBitmap != null)
+                            {
+                                skFrames.Add(new Layer8FrameSK
+                                {
+                                    Image = skBitmap,
+                                    XOffset = f.XOffset,
+                                    YOffset = f.YOffset
+                                });
+                            }
+                        }
+                    }
+                }
+                _renderCache.Layer8SprCacheSK[sprId] = skFrames;
+            }
+
+            if (skFrames == null || skFrames.Count == 0) return;
+
+            var key = (s32Path, itemIndex);
+            if (!_renderCache.Layer8AnimFrame.TryGetValue(key, out int frameIdx))
+            {
+                frameIdx = 0;
+                _renderCache.Layer8AnimFrame[key] = 0;
+            }
+
+            var frame = skFrames[frameIdx % skFrames.Count];
+            float drawW = frame.Image.Width * zoomLevel;
+            float drawH = frame.Image.Height * zoomLevel;
+
+            // 使用 SPR 檔案中的 offset（縮放後）
+            float drawX = x + frame.XOffset * zoomLevel;
+            float drawY = y + frame.YOffset * zoomLevel;
+
+            var destRect = new SKRect(drawX, drawY, drawX + drawW, drawY + drawH);
+            canvas.DrawBitmap(frame.Image, destRect);
+        }
+
+        // Eto.Drawing.Bitmap 轉換為 SKBitmap
+        private SKBitmap EtoBitmapToSKBitmap(Bitmap etoBitmap)
+        {
+            try
+            {
+                using var ms = new System.IO.MemoryStream();
+                etoBitmap.Save(ms, ImageFormat.Png);
+                ms.Position = 0;
+                return SKBitmap.Decode(ms);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        // 繪製選取的格子（SK 版本）
+        private void DrawSelectedCellsOnlySK(SKCanvas canvas, float zoomLevel, int scrollX, int scrollY)
         {
             if (_editState.SelectedCells.Count == 0) return;
 
