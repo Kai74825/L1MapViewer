@@ -7139,65 +7139,21 @@ namespace L1FlyMapViewer
         }
 
         // 更新 Layer5 編輯操作說明標籤
+        // 注意：實際的 Help Label 現在由 DrawEditModeHelpLabelSK 在 overlay 中繪製
         private void UpdateLayer5HelpLabel()
         {
-            _logger.Debug("[UpdateLayer5HelpLabel] Start");
-            try
-            {
-                // lblLayer5Help 現在在表單初始化時已創建，不需要動態創建
-
-                if (!_editState.IsLayer5EditMode)
-                {
-                    _logger.Debug("[UpdateLayer5HelpLabel] Not in edit mode, hiding");
-                    lblLayer5Help.Visible = false;
-                    UpdateDefaultHintVisibility();
-                    return;
-                }
-
-                _logger.Debug("[UpdateLayer5HelpLabel] Setting text and location");
-                lblLayer5Help.Text = "【透明編輯模式】\n" +
-                                     "• 左鍵：選取地圖格子\n" +
-                                     "• 查看右側【附近群組】\n" +
-                                     "• 右鍵：設定半透明/消失\n" +
-                                     "  紫色 = 半透明區塊\n" +
-                                     "  紅色 = 消失區塊\n" +
-                                     "• 再按按鈕：取消模式";
-                lblLayer5Help.SetLocation(new Point(10, 10));
-
-                _logger.Debug("[UpdateLayer5HelpLabel] Setting Visible = true");
-                lblLayer5Help.Visible = true;
-                lblLayer5Help.BringToFront();
-
-                lblDefaultHint.Visible = false;
-                _logger.Debug("[UpdateLayer5HelpLabel] Done");
-            }
-            catch (Exception ex)
-            {
-                _logger.Error(ex, "[UpdateLayer5HelpLabel] Exception occurred");
-            }
+            // 觸發 overlay 重繪以更新 Help Label 顯示
+            _mapViewerControl?.InvalidateOverlay();
+            UpdateDefaultHintVisibility();
         }
 
         // 更新通行性編輯操作說明標籤
+        // 注意：實際的 Help Label 現在由 DrawEditModeHelpLabelSK 在 overlay 中繪製
         private void UpdatePassabilityHelpLabel()
         {
-            if (currentPassableEditMode == PassableEditMode.None)
-            {
-                lblPassabilityHelp.Visible = false;
-                UpdateDefaultHintVisibility();
-                return;
-            }
-
-            lblPassabilityHelp.Text = "【通行編輯模式】\n" +
-                                      "• 左鍵拖曳選取區域\n" +
-                                      "• 右鍵：設定通行性\n" +
-                                      "  - 左上 可/不可通行\n" +
-                                      "  - 右上 可/不可通行\n" +
-                                      "  - 整格 可/不可通行\n" +
-                                      "• 再按按鈕：取消模式";
-            lblPassabilityHelp.TextColor = Colors.LightBlue;
-            lblPassabilityHelp.Visible = true;
-            lblPassabilityHelp.BringToFront();
-            lblDefaultHint.Visible = false;
+            // 觸發 overlay 重繪以更新 Help Label 顯示
+            _mapViewerControl?.InvalidateOverlay();
+            UpdateDefaultHintVisibility();
         }
 
         // 通行性設定目標
@@ -7506,61 +7462,23 @@ namespace L1FlyMapViewer
         }
 
         // 更新區域編輯操作說明標籤
+        // 注意：實際的 Help Label 現在由 DrawEditModeHelpLabelSK 在 overlay 中繪製
         private void UpdateRegionHelpLabel()
         {
-            if (currentRegionEditMode == RegionEditMode.None)
-            {
-                lblRegionHelp.Visible = false;
-                btnRegionNormal.Visible = false;
-                btnRegionSafe.Visible = false;
-                btnRegionCombat.Visible = false;
-                UpdateDefaultHintVisibility();
-                return;
-            }
-
-            string regionTypeName = GetRegionTypeName(currentRegionType);
-            Color regionColor = GetRegionTypeColor(currentRegionType);
-
-            lblRegionHelp.Text = $"【區域設置模式】\n" +
-                                 "• 左鍵拖曳選取，右鍵套用\n" +
-                                 "• 再按按鈕：取消模式";
-            lblRegionHelp.TextColor = regionColor;
-            lblRegionHelp.Visible = true;
-            lblRegionHelp.BringToFront();
-            lblDefaultHint.Visible = false;
-
-            // 顯示區域類型按鈕並更新狀態
-            btnRegionNormal.Visible = true;
-            btnRegionSafe.Visible = true;
-            btnRegionCombat.Visible = true;
-            btnRegionNormal.BringToFront();
-            btnRegionSafe.BringToFront();
-            btnRegionCombat.BringToFront();
-
-            // 高亮當前選中的類型
-            btnRegionNormal.BackgroundColor = currentRegionType == RegionType.Normal ? Colors.White : Color.FromArgb(80, 80, 80);
-            btnRegionSafe.BackgroundColor = currentRegionType == RegionType.Safe ? Color.FromArgb(0, 150, 255) : Color.FromArgb(60, 60, 80);
-            btnRegionCombat.BackgroundColor = currentRegionType == RegionType.Combat ? Color.FromArgb(180, 0, 255) : Color.FromArgb(70, 50, 80);
-
-            btnRegionNormal.TextColor = currentRegionType == RegionType.Normal ? Colors.Black : Colors.White;
-            btnRegionSafe.TextColor = Colors.White;
-            btnRegionCombat.TextColor = Colors.White;
+            // 觸發 overlay 重繪以更新 Help Label 顯示
+            _mapViewerControl?.InvalidateOverlay();
+            UpdateDefaultHintVisibility();
         }
 
         // 更新預設操作提示的顯示狀態
+        // 注意：所有提示現在都由 DrawEditModeHelpLabelSK 在 overlay 中繪製
         private void UpdateDefaultHintVisibility()
         {
-            // 如果沒有任何編輯模式啟動，顯示預設提示
-            bool anyModeActive = currentPassableEditMode != PassableEditMode.None ||
-                                 currentRegionEditMode != RegionEditMode.None ||
-                                 _editState.IsLayer5EditMode ||
-                                 _pendingMaterial != null;  // 素材貼上模式
-
-            lblDefaultHint.Visible = !anyModeActive;
-            if (lblDefaultHint.Visible)
-            {
-                lblDefaultHint.BringToFront();
-            }
+            // 隱藏舊的 Label（保留以避免 null reference）
+            if (lblDefaultHint != null) lblDefaultHint.Visible = false;
+            if (lblPassabilityHelp != null) lblPassabilityHelp.Visible = false;
+            if (lblRegionHelp != null) lblRegionHelp.Visible = false;
+            if (lblLayer5Help != null) lblLayer5Help.Visible = false;
         }
 
         // 重新載入按鈕點擊事件

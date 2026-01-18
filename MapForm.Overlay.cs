@@ -4,6 +4,7 @@ using System.Linq;
 using SkiaSharp;
 using L1MapViewer.Models;
 using L1MapViewer.Other;
+using L1MapViewer.Localization;
 using Eto.Drawing;
 using NLog;
 
@@ -743,6 +744,132 @@ namespace L1FlyMapViewer
 
             // 繪製選取的格子
             DrawSelectedCellsOnlySK(canvas, zoomLevel, scrollX, scrollY);
+
+            // 繪製編輯模式的 Help Label
+            DrawEditModeHelpLabelSK(canvas);
+        }
+
+        // 繪製編輯模式的 Help Label（固定位置，不隨地圖捲動）
+        private void DrawEditModeHelpLabelSK(SKCanvas canvas)
+        {
+            string helpText = null;
+            SKColor bgColor;
+            SKColor textColor;
+
+            // 根據當前編輯模式決定顯示內容
+            if (_editState.IsLayer5EditMode)
+            {
+                helpText = "【透明編輯模式】\n" +
+                           "• 左鍵：選取地圖格子\n" +
+                           "• 查看右側【附近群組】\n" +
+                           "• 右鍵：設定半透明/消失\n" +
+                           "  紫色 = 半透明區塊\n" +
+                           "  紅色 = 消失區塊\n" +
+                           "• 再按按鈕：取消模式";
+                bgColor = new SKColor(30, 30, 50, 220);
+                textColor = new SKColor(100, 180, 255);
+            }
+            else if (currentPassableEditMode != PassableEditMode.None)
+            {
+                helpText = "【通行編輯模式】\n" +
+                           "• 左鍵拖曳選取區域\n" +
+                           "• 右鍵：設定通行性\n" +
+                           "  - 上/下/左/右 阻擋\n" +
+                           "  - 整格 可/不可通行\n" +
+                           "• 再按按鈕：取消模式";
+                bgColor = new SKColor(30, 30, 30, 200);
+                textColor = new SKColor(173, 216, 230); // LightBlue
+            }
+            else if (currentRegionEditMode != RegionEditMode.None)
+            {
+                string regionTypeName = GetRegionTypeName(currentRegionType);
+                helpText = $"【區域設置模式】\n" +
+                           $"• 當前類型：{regionTypeName}\n" +
+                           "• 左鍵拖曳選取區域\n" +
+                           "• 右鍵：套用區域類型\n" +
+                           "• 1/2/3鍵：切換類型\n" +
+                           "• 再按按鈕：取消模式";
+                bgColor = new SKColor(40, 80, 40, 200);
+                textColor = GetRegionTypeColorSK(currentRegionType);
+            }
+            else
+            {
+                // 沒有編輯模式，繪製預設提示
+                helpText = LocalizationManager.L("Hint_MouseControls");
+                if (string.IsNullOrEmpty(helpText))
+                {
+                    helpText = "【操作說明】\n" +
+                               "• 滾輪：縮放\n" +
+                               "• 左鍵拖曳：移動地圖\n" +
+                               "• 右鍵：選單";
+                }
+                bgColor = new SKColor(50, 50, 50, 180);
+                textColor = new SKColor(255, 255, 255);
+            }
+
+            // 繪製 Help Label
+            float x = 10;
+            float y = 10;
+            float padding = 8;
+            float fontSize = 13;
+            float lineHeight = fontSize * 1.4f;
+
+            using var textPaint = new SKPaint
+            {
+                IsAntialias = true,
+                TextSize = fontSize,
+                Color = textColor,
+                Typeface = SKTypeface.FromFamilyName("Microsoft JhengHei", SKFontStyle.Normal)
+            };
+
+            // 計算文字區域大小
+            string[] lines = helpText.Split('\n');
+            float maxWidth = 0;
+            foreach (var line in lines)
+            {
+                float lineWidth = textPaint.MeasureText(line);
+                if (lineWidth > maxWidth) maxWidth = lineWidth;
+            }
+            float boxWidth = maxWidth + padding * 2;
+            float boxHeight = lines.Length * lineHeight + padding * 2;
+
+            // 繪製背景
+            using var bgPaint = new SKPaint
+            {
+                IsAntialias = true,
+                Style = SKPaintStyle.Fill,
+                Color = bgColor
+            };
+            canvas.DrawRoundRect(x, y, boxWidth, boxHeight, 4, 4, bgPaint);
+
+            // 繪製邊框
+            using var borderPaint = new SKPaint
+            {
+                IsAntialias = true,
+                Style = SKPaintStyle.Stroke,
+                StrokeWidth = 1,
+                Color = new SKColor(100, 100, 100, 200)
+            };
+            canvas.DrawRoundRect(x, y, boxWidth, boxHeight, 4, 4, borderPaint);
+
+            // 繪製文字
+            float textY = y + padding + fontSize;
+            foreach (var line in lines)
+            {
+                canvas.DrawText(line, x + padding, textY, textPaint);
+                textY += lineHeight;
+            }
+        }
+
+        // 取得區域類型的 SKColor
+        private SKColor GetRegionTypeColorSK(RegionType regionType)
+        {
+            return regionType switch
+            {
+                RegionType.Safe => new SKColor(100, 150, 255),    // 藍色
+                RegionType.Combat => new SKColor(255, 100, 100),  // 紅色
+                _ => new SKColor(200, 200, 200)                   // 灰色（一般）
+            };
         }
 
         // 繪製 Layer8 覆蓋層（SK 版本）
