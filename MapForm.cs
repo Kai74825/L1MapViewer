@@ -684,12 +684,32 @@ namespace L1FlyMapViewer
             };
 
             // 監聽 mapContainer 大小變更以調整子控件大小和圖層面板位置
+            // 使用標記防止 GTK 平台上的佈局循環
+            bool isAdjustingMapSize = false;
+            Eto.Drawing.Size lastMapContainerSize = Eto.Drawing.Size.Empty;
             mapContainer.SizeChanged += (s, e) =>
             {
-                _mapViewerControl.Size = mapContainer.Size;
-                // 調整圖層面板位置（右上角）
-                int x = Math.Max(10, mapContainer.Width - 120);
-                mapPixelLayout.Move(etoLayerPanel, x, 10);
+                // 防止循環：如果大小沒變或正在調整中，跳過
+                if (isAdjustingMapSize || mapContainer.Size == lastMapContainerSize)
+                    return;
+
+                // 忽略無效大小
+                if (mapContainer.Width <= 0 || mapContainer.Height <= 0)
+                    return;
+
+                isAdjustingMapSize = true;
+                lastMapContainerSize = mapContainer.Size;
+                try
+                {
+                    _mapViewerControl.Size = mapContainer.Size;
+                    // 調整圖層面板位置（右上角）
+                    int x = Math.Max(10, mapContainer.Width - 120);
+                    mapPixelLayout.Move(etoLayerPanel, x, 10);
+                }
+                finally
+                {
+                    isAdjustingMapSize = false;
+                }
             };
 
             // 中間面板布局
