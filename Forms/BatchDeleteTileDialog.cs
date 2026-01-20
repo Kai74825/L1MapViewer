@@ -1,5 +1,4 @@
 using System;
-// using System.Drawing; // Replaced with Eto.Drawing
 using Eto.Forms;
 using Eto.Drawing;
 using L1MapViewer.Compatibility;
@@ -10,7 +9,7 @@ namespace L1MapViewer.Forms
     /// <summary>
     /// 批次刪除 Tile 對話框
     /// </summary>
-    public class BatchDeleteTileDialog : WinFormsDialog
+    public class BatchDeleteTileDialog : Dialog
     {
         /// <summary>
         /// TileId 起始值
@@ -37,13 +36,18 @@ namespace L1MapViewer.Forms
         /// </summary>
         public bool ProcessAllMaps => rbAllMaps.Checked;
 
+        /// <summary>
+        /// 使用者是否確認執行
+        /// </summary>
+        public bool Confirmed { get; private set; }
+
         private GroupBox grpTileId;
         private GroupBox grpIndexId;
         private GroupBox grpScope;
-        private NumericUpDown nudTileIdStart;
-        private NumericUpDown nudTileIdEnd;
-        private NumericUpDown nudIndexIdStart;
-        private NumericUpDown nudIndexIdEnd;
+        private NumericStepper nudTileIdStart;
+        private NumericStepper nudTileIdEnd;
+        private NumericStepper nudIndexIdStart;
+        private NumericStepper nudIndexIdEnd;
         private RadioButton rbCurrentMap;
         private RadioButton rbAllMaps;
         private Label lblTileIdStart;
@@ -70,10 +74,7 @@ namespace L1MapViewer.Forms
 
         private void OnLanguageChanged(object? sender, EventArgs e)
         {
-            if (this.GetInvokeRequired())
-                this.Invoke(new Action(() => UpdateLocalization()));
-            else
-                UpdateLocalization();
+            Application.Instance.Invoke(() => UpdateLocalization());
         }
 
         protected override void Dispose(bool disposing)
@@ -87,173 +88,154 @@ namespace L1MapViewer.Forms
 
         private void InitializeComponents()
         {
-            Text = "批次刪除 Tile";
-            Size = new Size(340, 340);
-            FormBorderStyle = FormBorderStyle.FixedDialog;
-            StartPosition = FormStartPosition.CenterParent;
-            MaximizeBox = false;
-            MinimizeBox = false;
-
-            int y = 15;
+            Title = "批次刪除 Tile";
+            MinimumSize = new Size(320, 300);
+            Resizable = false;
 
             // TileId 範圍
+            lblTileIdStart = new Label { Text = "起始:" };
+            nudTileIdStart = new NumericStepper
+            {
+                MinValue = 0,
+                MaxValue = 65535,
+                Value = 0,
+                Width = 80
+            };
+
+            lblTileIdEnd = new Label { Text = "結束:" };
+            nudTileIdEnd = new NumericStepper
+            {
+                MinValue = 0,
+                MaxValue = 65535,
+                Value = 65535,
+                Width = 80
+            };
+
             grpTileId = new GroupBox
             {
                 Text = "TileId 範圍",
-                Location = new Point(15, y),
-                Size = new Size(295, 60)
+                Content = new StackLayout
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 10,
+                    Padding = new Padding(10),
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    Items =
+                    {
+                        lblTileIdStart,
+                        nudTileIdStart,
+                        lblTileIdEnd,
+                        nudTileIdEnd
+                    }
+                }
             };
-            Controls.Add(grpTileId);
-
-            lblTileIdStart = new Label
-            {
-                Text = "起始:",
-                Location = new Point(15, 25),
-                Size = new Size(40, 20)
-            };
-            grpTileId.GetControls().Add(lblTileIdStart);
-
-            nudTileIdStart = new NumericUpDown
-            {
-                Location = new Point(55, 22),
-                Size = new Size(80, 23),
-                Minimum = 0,
-                Maximum = 65535,
-                Value = 0
-            };
-            grpTileId.GetControls().Add(nudTileIdStart);
-
-            lblTileIdEnd = new Label
-            {
-                Text = "結束:",
-                Location = new Point(150, 25),
-                Size = new Size(40, 20)
-            };
-            grpTileId.GetControls().Add(lblTileIdEnd);
-
-            nudTileIdEnd = new NumericUpDown
-            {
-                Location = new Point(190, 22),
-                Size = new Size(80, 23),
-                Minimum = 0,
-                Maximum = 65535,
-                Value = 65535
-            };
-            grpTileId.GetControls().Add(nudTileIdEnd);
-
-            y += 70;
 
             // IndexId 範圍
+            lblIndexIdStart = new Label { Text = "起始:" };
+            nudIndexIdStart = new NumericStepper
+            {
+                MinValue = 0,
+                MaxValue = 255,
+                Value = 0,
+                Width = 80
+            };
+
+            lblIndexIdEnd = new Label { Text = "結束:" };
+            nudIndexIdEnd = new NumericStepper
+            {
+                MinValue = 0,
+                MaxValue = 255,
+                Value = 255,
+                Width = 80
+            };
+
             grpIndexId = new GroupBox
             {
                 Text = "IndexId 範圍",
-                Location = new Point(15, y),
-                Size = new Size(295, 60)
+                Content = new StackLayout
+                {
+                    Orientation = Orientation.Horizontal,
+                    Spacing = 10,
+                    Padding = new Padding(10),
+                    VerticalContentAlignment = VerticalAlignment.Center,
+                    Items =
+                    {
+                        lblIndexIdStart,
+                        nudIndexIdStart,
+                        lblIndexIdEnd,
+                        nudIndexIdEnd
+                    }
+                }
             };
-            Controls.Add(grpIndexId);
-
-            lblIndexIdStart = new Label
-            {
-                Text = "起始:",
-                Location = new Point(15, 25),
-                Size = new Size(40, 20)
-            };
-            grpIndexId.GetControls().Add(lblIndexIdStart);
-
-            nudIndexIdStart = new NumericUpDown
-            {
-                Location = new Point(55, 22),
-                Size = new Size(80, 23),
-                Minimum = 0,
-                Maximum = 255,
-                Value = 0
-            };
-            grpIndexId.GetControls().Add(nudIndexIdStart);
-
-            lblIndexIdEnd = new Label
-            {
-                Text = "結束:",
-                Location = new Point(150, 25),
-                Size = new Size(40, 20)
-            };
-            grpIndexId.GetControls().Add(lblIndexIdEnd);
-
-            nudIndexIdEnd = new NumericUpDown
-            {
-                Location = new Point(190, 22),
-                Size = new Size(80, 23),
-                Minimum = 0,
-                Maximum = 255,
-                Value = 255
-            };
-            grpIndexId.GetControls().Add(nudIndexIdEnd);
-
-            y += 70;
 
             // 範圍選擇
-            grpScope = new GroupBox
-            {
-                Text = "處理範圍",
-                Location = new Point(15, y),
-                Size = new Size(295, 75)
-            };
-            Controls.Add(grpScope);
-
             rbCurrentMap = new RadioButton
             {
                 Text = "當前地圖",
-                Location = new Point(15, 25),
-                Size = new Size(260, 20),
                 Checked = _hasCurrentMap,
                 Enabled = _hasCurrentMap
             };
-            grpScope.GetControls().Add(rbCurrentMap);
 
-            rbAllMaps = new RadioButton
+            rbAllMaps = new RadioButton(rbCurrentMap)
             {
                 Text = "所有地圖 (maps 資料夾)",
-                Location = new Point(15, 48),
-                Size = new Size(260, 20),
                 Checked = !_hasCurrentMap
             };
-            grpScope.GetControls().Add(rbAllMaps);
 
-            y += 85;
+            grpScope = new GroupBox
+            {
+                Text = "處理範圍",
+                Content = new StackLayout
+                {
+                    Orientation = Orientation.Vertical,
+                    Spacing = 8,
+                    Padding = new Padding(10),
+                    Items = { rbCurrentMap, rbAllMaps }
+                }
+            };
 
             // 警告訊息
             lblWarning = new Label
             {
                 Text = "此操作會直接修改 S32 檔案，請先備份！",
-                Location = new Point(15, y),
-                Size = new Size(295, 20),
-                ForeColor = Colors.Red
+                TextColor = Colors.Red
             };
-            Controls.Add(lblWarning);
-
-            y += 30;
 
             // 按鈕
-            btnDelete = new Button
-            {
-                Text = "刪除",
-                Location = new Point(130, y),
-                Size = new Size(80, 28),
-                DialogResult = DialogResult.Ok
-            };
+            btnDelete = new Button { Text = "刪除" };
             btnDelete.Click += BtnDelete_Click;
-            Controls.Add(btnDelete);
 
-            btnCancel = new Button
+            btnCancel = new Button { Text = "取消" };
+            btnCancel.Click += (s, e) => Close();
+
+            // 主要佈局
+            Content = new StackLayout
             {
-                Text = "取消",
-                Location = new Point(220, y),
-                Size = new Size(80, 28),
-                DialogResult = DialogResult.Cancel
+                Orientation = Orientation.Vertical,
+                Padding = new Padding(15),
+                Spacing = 10,
+                Items =
+                {
+                    grpTileId,
+                    grpIndexId,
+                    grpScope,
+                    lblWarning,
+                    new StackLayout
+                    {
+                        Orientation = Orientation.Horizontal,
+                        Spacing = 10,
+                        Items =
+                        {
+                            null, // 彈性空間
+                            btnDelete,
+                            btnCancel
+                        }
+                    }
+                }
             };
-            Controls.Add(btnCancel);
 
-            AcceptButton = btnDelete;
-            CancelButton = btnCancel;
+            DefaultButton = btnDelete;
+            AbortButton = btnCancel;
         }
 
         private void BtnDelete_Click(object? sender, EventArgs e)
@@ -266,7 +248,6 @@ namespace L1MapViewer.Forms
                     LocalizationManager.L("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
-                DialogResult = DialogResult.None;
                 return;
             }
 
@@ -277,7 +258,6 @@ namespace L1MapViewer.Forms
                     LocalizationManager.L("Error"),
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
-                DialogResult = DialogResult.None;
                 return;
             }
 
@@ -295,15 +275,16 @@ namespace L1MapViewer.Forms
                 MessageBoxButtons.YesNo,
                 MessageBoxIcon.Warning);
 
-            if (result != DialogResult.Yes)
+            if (result == DialogResult.Yes)
             {
-                DialogResult = DialogResult.None;
+                Confirmed = true;
+                Close();
             }
         }
 
         private void UpdateLocalization()
         {
-            Text = LocalizationManager.L("Form_BatchDeleteTile_Title");
+            Title = LocalizationManager.L("Form_BatchDeleteTile_Title");
             grpTileId.Text = LocalizationManager.L("BatchDeleteTile_TileIdRange");
             grpIndexId.Text = LocalizationManager.L("BatchDeleteTile_IndexIdRange");
             grpScope.Text = LocalizationManager.L("BatchDeleteTile_Scope");

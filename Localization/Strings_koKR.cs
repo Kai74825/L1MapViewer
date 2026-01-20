@@ -71,6 +71,7 @@ namespace L1MapViewer.Localization
             // === Buttons - Common ===
             { "Button_OK", "확인" },
             { "Button_Cancel", "취소" },
+            { "Button_Preview", "미리보기" },
             { "Button_Save", "저장" },
             { "Button_Close", "닫기" },
             { "Button_New", "새로 만들기" },

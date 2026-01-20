@@ -28177,18 +28177,18 @@ namespace L1FlyMapViewer
 
             bool hasCurrentMap = _document != null && !string.IsNullOrEmpty(_document.MapId);
 
-            using (var dialog = new L1MapViewer.Forms.BatchDeleteTileDialog(hasCurrentMap))
-            {
-                if (dialog.ShowDialog(this) != DialogResult.Ok)
-                    return;
+            var dialog = new L1MapViewer.Forms.BatchDeleteTileDialog(hasCurrentMap);
+            dialog.ShowModal();
 
-                BatchDeleteTiles(
-                    dialog.TileIdStart,
-                    dialog.TileIdEnd,
-                    dialog.IndexIdStart,
-                    dialog.IndexIdEnd,
-                    dialog.ProcessAllMaps);
-            }
+            if (!dialog.Confirmed)
+                return;
+
+            BatchDeleteTiles(
+                dialog.TileIdStart,
+                dialog.TileIdEnd,
+                dialog.IndexIdStart,
+                dialog.IndexIdEnd,
+                dialog.ProcessAllMaps);
         }
 
         private void BatchDeleteTiles(int tileIdStart, int tileIdEnd, int indexIdStart, int indexIdEnd, bool processAllMaps)
