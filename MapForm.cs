@@ -361,6 +361,16 @@ namespace L1FlyMapViewer
             this.DragEnter += lvMaterials_DragEnter;
             this.DragOver += lvMaterials_DragOver;
             this.DragDrop += lvMaterials_DragDrop;
+
+            // 關閉程式前檢查未保存變更
+            this.Closing += (s, e) =>
+            {
+                if (!CheckUnsavedChangesAndConfirm())
+                {
+                    e.Cancel = true; // 取消關閉
+                }
+            };
+
             LogPerf("[FORM-CTOR] InitializeComponent done");
 
             // 初始化渲染防抖Timer（50ms延遲，減少等待時間）
@@ -376,6 +386,18 @@ namespace L1FlyMapViewer
                     RenderS32Map();
                 }
                 _logger.Debug($"[RENDER-DEBOUNCE] Complete in {sw.ElapsedMilliseconds}ms");
+            };
+
+            // 訂閱 S32Data 修改狀態變更事件
+            S32Data.ModifiedStateChanged += (s32Data, isModified) =>
+            {
+                // 確保在 UI 線程執行
+                Application.Instance.AsyncInvoke(() =>
+                {
+                    UpdateSaveButtonState();
+                    // 可在此處記錄哪個 S32 被修改（如需要）
+                    // _logger.Debug($"S32 {s32Data.FilePath} IsModified={isModified}");
+                });
             };
 
             // 初始化拖曳渲染延遲Timer（50ms延遲，減少等待時間）
@@ -501,9 +523,20 @@ namespace L1FlyMapViewer
         }
 
         /// <summary>
-        /// 圖層面板的 ColoredCheckBox 列表
+        /// 圖層面板的 ColoredCheckBox 列表（含本地化鍵）
         /// </summary>
-        private List<ColoredCheckBox> _layerColoredCheckBoxes;
+        private List<(ColoredCheckBox chk, string locKey)> _layerColoredCheckBoxes;
+
+        /// <summary>
+        /// 圖層面板標題 Label
+        /// </summary>
+        private Eto.Forms.Label _layerPanelTitleLabel;
+
+        /// <summary>
+        /// 左側 TabControl 的 Tab 頁籤（供本地化使用）
+        /// </summary>
+        private Eto.Forms.TabPage _leftTabMap;
+        private Eto.Forms.TabPage _leftTabS32;
 
         /// <summary>
         /// 創建自繪圖層面板
@@ -511,21 +544,21 @@ namespace L1FlyMapViewer
         private Eto.Forms.Panel CreateCustomLayerPanel()
         {
             // 創建 ColoredCheckBox 並綁定到原有的 CheckBox
-            _layerColoredCheckBoxes = new List<ColoredCheckBox>();
+            _layerColoredCheckBoxes = new List<(ColoredCheckBox chk, string locKey)>();
 
             var layerConfigs = new[]
             {
-                (text: "L1 地板", color: Eto.Drawing.Colors.White, chk: chkFloatLayer1),
-                (text: "L2", color: Eto.Drawing.Colors.LightGrey, chk: chkFloatLayer2),
-                (text: "L4 物件", color: Eto.Drawing.Colors.White, chk: chkFloatLayer4),
-                (text: "L5 透明", color: Eto.Drawing.Color.FromArgb(100, 180, 255), chk: chkFloatLayer5),
-                (text: "通行", color: Eto.Drawing.Colors.LightGreen, chk: chkFloatPassable),
-                (text: "格線", color: Eto.Drawing.Colors.LightBlue, chk: chkFloatGrid),
-                (text: "S32邊界", color: Eto.Drawing.Colors.Orange, chk: chkFloatS32Boundary),
-                (text: "安全區", color: Eto.Drawing.Color.FromArgb(100, 180, 255), chk: chkFloatSafeZones),
-                (text: "戰鬥區", color: Eto.Drawing.Color.FromArgb(255, 100, 100), chk: chkFloatCombatZones),
-                (text: LocalizationManager.L("Layer_L8Spr"), color: Eto.Drawing.Color.FromArgb(255, 180, 100), chk: chkFloatLayer8Spr),
-                (text: LocalizationManager.L("Layer_L8Marker"), color: Eto.Drawing.Color.FromArgb(255, 180, 100), chk: chkFloatLayer8Marker),
+                (locKey: "Layer_FloatL1", color: Eto.Drawing.Colors.White, chk: chkFloatLayer1),
+                (locKey: "Layer_FloatL2", color: Eto.Drawing.Colors.LightGrey, chk: chkFloatLayer2),
+                (locKey: "Layer_FloatL4", color: Eto.Drawing.Colors.White, chk: chkFloatLayer4),
+                (locKey: "Layer_FloatL5", color: Eto.Drawing.Color.FromArgb(100, 180, 255), chk: chkFloatLayer5),
+                (locKey: "Layer_FloatPassable", color: Eto.Drawing.Colors.LightGreen, chk: chkFloatPassable),
+                (locKey: "Layer_FloatGrid", color: Eto.Drawing.Colors.LightBlue, chk: chkFloatGrid),
+                (locKey: "Layer_FloatS32Border", color: Eto.Drawing.Colors.Orange, chk: chkFloatS32Boundary),
+                (locKey: "Layer_FloatSafeZones", color: Eto.Drawing.Color.FromArgb(100, 180, 255), chk: chkFloatSafeZones),
+                (locKey: "Layer_FloatCombatZones", color: Eto.Drawing.Color.FromArgb(255, 100, 100), chk: chkFloatCombatZones),
+                (locKey: "Layer_L8Spr", color: Eto.Drawing.Color.FromArgb(255, 180, 100), chk: chkFloatLayer8Spr),
+                (locKey: "Layer_L8Marker", color: Eto.Drawing.Color.FromArgb(255, 180, 100), chk: chkFloatLayer8Marker),
             };
 
             var stackLayout = new Eto.Forms.StackLayout
@@ -536,20 +569,20 @@ namespace L1FlyMapViewer
             };
 
             // 標題
-            var titleLabel = new Eto.Forms.Label
+            _layerPanelTitleLabel = new Eto.Forms.Label
             {
-                Text = "▣ 圖層",
+                Text = "▣ " + LocalizationManager.L("Label_Layers"),
                 TextColor = Eto.Drawing.Colors.White,
                 Font = new Eto.Drawing.Font(Eto.Drawing.SystemFont.Bold, 10)
             };
-            stackLayout.Items.Add(titleLabel);
+            stackLayout.Items.Add(_layerPanelTitleLabel);
 
             // 添加每個 ColoredCheckBox
             foreach (var config in layerConfigs)
             {
                 var coloredChk = new ColoredCheckBox
                 {
-                    Text = config.text,
+                    Text = LocalizationManager.L(config.locKey),
                     TextColor = config.color,
                     Checked = config.chk.Checked == true
                 };
@@ -569,7 +602,7 @@ namespace L1FlyMapViewer
                     }
                 };
 
-                _layerColoredCheckBoxes.Add(coloredChk);
+                _layerColoredCheckBoxes.Add((coloredChk, config.locKey));
                 stackLayout.Items.Add(coloredChk);
             }
 
@@ -640,10 +673,10 @@ namespace L1FlyMapViewer
 
             // 重建 TabControl
             var leftTabs = new Eto.Forms.TabControl();
-            var tabMap = new Eto.Forms.TabPage { Text = "地圖列表", Content = mapListLayout };
-            var tabS32 = new Eto.Forms.TabPage { Text = "S32 檔案", Content = s32FilesLayout };
-            leftTabs.Pages.Add(tabMap);
-            leftTabs.Pages.Add(tabS32);
+            _leftTabMap = new Eto.Forms.TabPage { Text = LocalizationManager.L("Tab_MapList"), Content = mapListLayout };
+            _leftTabS32 = new Eto.Forms.TabPage { Text = LocalizationManager.L("Tab_S32Files"), Content = s32FilesLayout };
+            leftTabs.Pages.Add(_leftTabMap);
+            leftTabs.Pages.Add(_leftTabS32);
 
             leftLayout.Items.Add(new Eto.Forms.StackLayoutItem(leftTabs, true));
 
@@ -670,6 +703,7 @@ namespace L1FlyMapViewer
             };
             toolRow2.Items.Add(btnEditPassable);
             toolRow2.Items.Add(btnEditLayer5);
+            toolRow2.Items.Add(btnMergeL2ToL1);
             toolRow2.Items.Add(btnRegionEdit);
 
             // 工具列容器
@@ -2722,6 +2756,9 @@ namespace L1FlyMapViewer
 
             CheckAndRerenderIfNeeded();
             UpdateMiniMap();
+
+            // 更新保存按鈕狀態（重新載入後應該恢復為無未保存狀態）
+            UpdateSaveButtonState();
         }
 
         private void MapForm_Load(object sender, EventArgs e)
@@ -3668,6 +3705,12 @@ namespace L1FlyMapViewer
         {
             if (isFiltering) return;
             if (lstMaps.SelectedItem == null) return;
+
+            // 切換地圖前檢查是否有未保存的變更
+            if (!CheckUnsavedChangesAndConfirm())
+            {
+                return; // 使用者取消，不切換地圖
+            }
 
             string selectedMapName = lstMaps.SelectedItem.ToString();
 
@@ -7112,6 +7155,112 @@ namespace L1FlyMapViewer
                 RenderS32Map();  // 重新渲染以顯示群組覆蓋層
             }
             _logger.Debug($"[Layer5Edit] btnEditLayer5_Click done: IsLayer5EditMode={_editState.IsLayer5EditMode}");
+        }
+
+        // L2 合併到 L1 按鈕點擊事件
+        private void btnMergeL2ToL1_Click(object sender, EventArgs e)
+        {
+            if (_document.S32Files.Count == 0)
+            {
+                WinFormsMessageBox.Show("請先載入地圖", "提示", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
+
+            // 確認對話框
+            var result = WinFormsMessageBox.Show(
+                "此功能會將所有 S32 區塊中的 Layer2 圖塊合併到 Layer1。\n\n" +
+                "對於每個 Layer2 項目，會用該 TileId 取代對應位置 Layer1 的 TileId。\n" +
+                "合併後 Layer2 資料會被清空。\n\n" +
+                "此操作會修改所有已載入的 S32 區塊，請確認是否繼續？",
+                "確認 L2 合併到 L1",
+                MessageBoxButtons.YesNo,
+                MessageBoxIcon.Question);
+
+            if (result != DialogResult.Yes)
+                return;
+
+            try
+            {
+                int totalMerged = 0;
+                int totalS32Modified = 0;
+
+                foreach (var kvp in _document.S32Files)
+                {
+                    var s32Data = kvp.Value;
+                    if (s32Data.Layer2 == null || s32Data.Layer2.Count == 0)
+                        continue;
+
+                    int mergedInThisS32 = 0;
+
+                    foreach (var l2Item in s32Data.Layer2)
+                    {
+                        int x = l2Item.X;
+                        int y = l2Item.Y;
+
+                        // 確保座標在範圍內
+                        if (x >= 0 && x < 128 && y >= 0 && y < 64)
+                        {
+                            // 取得 Layer1 對應位置的格子
+                            var layer1Cell = s32Data.Layer1[y, x];
+                            if (layer1Cell != null)
+                            {
+                                // 用 Layer2 的 TileId 取代 Layer1 的 TileId
+                                layer1Cell.TileId = l2Item.TileId;
+                                layer1Cell.IndexId = l2Item.IndexId;
+                                layer1Cell.IsModified = true;
+                                mergedInThisS32++;
+                            }
+                        }
+                    }
+
+                    if (mergedInThisS32 > 0)
+                    {
+                        // 清空 Layer2
+                        int originalL2Count = s32Data.Layer2.Count;
+                        s32Data.Layer2.Clear();
+                        s32Data.IsModified = true;
+                        totalMerged += mergedInThisS32;
+                        totalS32Modified++;
+
+                        _logger.Info($"[MergeL2ToL1] S32 {kvp.Key}: merged {mergedInThisS32} L2 items (original L2 count: {originalL2Count})");
+                    }
+                }
+
+                if (totalMerged > 0)
+                {
+                    // 重新渲染
+                    ClearS32BlockCache();
+                    RenderS32Map();
+
+                    WinFormsMessageBox.Show(
+                        $"L2 合併完成！\n\n" +
+                        $"• 修改的 S32 區塊數：{totalS32Modified}\n" +
+                        $"• 合併的 Layer2 項目數：{totalMerged}\n\n" +
+                        $"請記得保存修改的 S32 檔案。",
+                        "合併完成",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+
+                    this.toolStripStatusLabel1.Text = $"L2 合併完成：{totalMerged} 個項目";
+                }
+                else
+                {
+                    WinFormsMessageBox.Show(
+                        "沒有找到需要合併的 Layer2 資料。",
+                        "提示",
+                        MessageBoxButtons.OK,
+                        MessageBoxIcon.Information);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex, "[MergeL2ToL1] Error during merge");
+                WinFormsMessageBox.Show(
+                    $"合併過程發生錯誤：{ex.Message}",
+                    "錯誤",
+                    MessageBoxButtons.OK,
+                    MessageBoxIcon.Error);
+            }
         }
 
         // 確保 Layer5 圖層可見
@@ -17086,6 +17235,63 @@ namespace L1FlyMapViewer
                     "部分失敗",
                     MessageBoxButtons.OK,
                     MessageBoxIcon.Warning);
+            }
+
+            // 更新保存按鈕狀態
+            UpdateSaveButtonState();
+        }
+
+        /// <summary>
+        /// 更新保存按鈕狀態 - 有未保存變更時顯示橙色
+        /// </summary>
+        private void UpdateSaveButtonState()
+        {
+            if (_document.HasUnsavedChanges)
+            {
+                // 有未保存變更 - 橙色背景
+                btnSaveS32.BackgroundColor = Color.FromArgb(255, 165, 0); // Orange
+                btnSaveS32.Text = LocalizationManager.L("Button_SaveS32") + " *";
+            }
+            else
+            {
+                // 無變更 - 恢復預設
+                btnSaveS32.BackgroundColor = SystemColors.Control;
+                btnSaveS32.Text = LocalizationManager.L("Button_SaveS32");
+            }
+        }
+
+        /// <summary>
+        /// 檢查是否有未保存變更，如有則詢問使用者
+        /// </summary>
+        /// <returns>true = 可以繼續（已保存或放棄），false = 取消操作</returns>
+        private bool CheckUnsavedChangesAndConfirm()
+        {
+            if (!_document.HasUnsavedChanges)
+                return true;
+
+            var modifiedCount = _document.ModifiedS32Files.Count();
+            var result = WinFormsMessageBox.Show(
+                $"有 {modifiedCount} 個 S32 檔案尚未保存。\n\n是否要保存變更？",
+                "未保存的變更",
+                MessageBoxButtons.YesNoCancel,
+                MessageBoxIcon.Warning);
+
+            if (result == DialogResult.Yes)
+            {
+                // 保存所有變更
+                btnSaveS32_Click(this, EventArgs.Empty);
+                // 檢查保存是否成功
+                return !_document.HasUnsavedChanges;
+            }
+            else if (result == DialogResult.No)
+            {
+                // 放棄變更
+                return true;
+            }
+            else
+            {
+                // 取消
+                return false;
             }
         }
 

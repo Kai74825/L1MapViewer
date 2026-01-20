@@ -155,6 +155,11 @@ static class Program
         using var app = new Application(platform);
         LogPerf("[PROGRAM] Eto Application created");
 
+        // 預先初始化 Eto 樣式系統，避免在並行環境中發生競爭條件
+        // Eto.Forms 的 DefaultStyleProvider 不是線程安全的，需要在主執行緒先初始化
+        _ = Screen.PrimaryScreen;
+        LogPerf("[PROGRAM] Eto Screen initialized");
+
         // 捕捉 Eto.Forms 的未處理例外
         app.UnhandledException += (sender, e) =>
         {

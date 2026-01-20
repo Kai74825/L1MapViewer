@@ -115,6 +115,9 @@ namespace L1MapViewer.Localization
             { "Button_CheckL6", "L6確認" },
             { "Button_CheckL7", "L7確認" },
             { "Button_CheckL8", "L8確認" },
+            { "Button_ViewClipboard", "貼付" },
+            { "Button_TestTile", "テスト" },
+            { "Button_ClearTestTile", "クリア" },
             { "Button_More", "もっと..." },
             { "Button_ShowAll", "全て" },
 
@@ -134,6 +137,10 @@ namespace L1MapViewer.Localization
             { "Label_SelectedAreaGroupsCount", "選択エリアグループ ({0})" },
             { "Label_SelectedAreaAllGroups", "エリア-全て" },
             { "Placeholder_SearchTileId", "タイルID検索..." },
+            { "Placeholder_SearchGroup", "検索..." },
+            { "GroupMode_SelectedArea", "選択エリア" },
+            { "GroupMode_SelectedAreaAll", "エリア-全て" },
+            { "GroupMode_All", "全て" },
             { "Label_SearchResult", "検索結果" },
 
             // === Labels - Common ===

@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using L1MapViewer.Localization;
 
 namespace L1FlyMapViewer
@@ -98,9 +99,11 @@ namespace L1FlyMapViewer
             tabMapPreview.Text = LocalizationManager.L("Tab_MapPreview");
             tabS32Editor.Text = LocalizationManager.L("Tab_S32Editor");
 
-            // 左下角 Tab 頁籤
-            tabMapList.Text = LocalizationManager.L("Tab_MapList");
-            tabS32Files.Text = LocalizationManager.L("Tab_S32Files");
+            // 左下角 Tab 頁籤（使用 Eto 原生的 _leftTabs）
+            if (_leftTabMap != null)
+                _leftTabMap.Text = LocalizationManager.L("Tab_MapList");
+            if (_leftTabS32 != null)
+                _leftTabS32.Text = LocalizationManager.L("Tab_S32Files");
             txtMapSearch.PlaceholderText = LocalizationManager.L("Placeholder_SearchMap");
 
             // 圖層控制標籤
@@ -153,18 +156,20 @@ namespace L1FlyMapViewer
             btnToolCheckL6.Text = LocalizationManager.L("Button_CheckL6");
             btnToolCheckL7.Text = LocalizationManager.L("Button_CheckL7");
             btnToolCheckL8.Text = LocalizationManager.L("Button_CheckL8");
+            btnViewClipboard.Text = LocalizationManager.L("Button_ViewClipboard");
+            btnToolTestTil.Text = LocalizationManager.L("Button_TestTile");
+            btnToolClearTestTil.Text = LocalizationManager.L("Button_ClearTestTile");
 
-            // 浮動圖層面板
-            lblLayerIcon.Text = "📑 " + LocalizationManager.L("Label_Layers");
-            chkFloatLayer1.Text = LocalizationManager.L("Layer_FloatL1");
-            chkFloatLayer2.Text = LocalizationManager.L("Layer_FloatL2");
-            chkFloatLayer4.Text = LocalizationManager.L("Layer_FloatL4");
-            chkFloatLayer5.Text = LocalizationManager.L("Layer_FloatL5");
-            chkFloatPassable.Text = LocalizationManager.L("Layer_FloatPassable");
-            chkFloatGrid.Text = LocalizationManager.L("Layer_FloatGrid");
-            chkFloatS32Boundary.Text = LocalizationManager.L("Layer_FloatS32Border");
-            chkFloatSafeZones.Text = LocalizationManager.L("Layer_FloatSafeZones");
-            chkFloatCombatZones.Text = LocalizationManager.L("Layer_FloatCombatZones");
+            // 浮動圖層面板（使用 ColoredCheckBox）
+            if (_layerPanelTitleLabel != null)
+                _layerPanelTitleLabel.Text = "▣ " + LocalizationManager.L("Label_Layers");
+            if (_layerColoredCheckBoxes != null)
+            {
+                foreach (var (chk, locKey) in _layerColoredCheckBoxes)
+                {
+                    chk.Text = LocalizationManager.L(locKey);
+                }
+            }
 
             // Tile 面板
             txtTileSearch.PlaceholderText = LocalizationManager.L("Placeholder_SearchTileId");
@@ -172,6 +177,16 @@ namespace L1FlyMapViewer
             lblMaterials.Text = LocalizationManager.L("Label_RecentMaterials");
             lblGroupThumbnails.Text = LocalizationManager.L("Label_GroupThumbnails");
             btnMoreMaterials.Text = LocalizationManager.L("Button_More");
+
+            // 群組縮圖面板
+            txtGroupSearch.PlaceholderText = LocalizationManager.L("Placeholder_SearchGroup");
+            // 更新群組模式下拉選單
+            int selectedIndex = cmbGroupMode.SelectedIndex;
+            cmbGroupMode.Items.Clear();
+            cmbGroupMode.Items.Add(LocalizationManager.L("GroupMode_SelectedArea"));
+            cmbGroupMode.Items.Add(LocalizationManager.L("GroupMode_SelectedAreaAll"));
+            cmbGroupMode.Items.Add(LocalizationManager.L("GroupMode_All"));
+            cmbGroupMode.SelectedIndex = selectedIndex >= 0 ? selectedIndex : 0;
 
             // 滑鼠操作提示現在由 DrawEditModeHelpLabelSK 在 overlay 中繪製
             // 會自動使用 LocalizationManager.L("Hint_MouseControls")

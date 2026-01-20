@@ -115,6 +115,9 @@ namespace L1MapViewer.Localization
             { "Button_CheckL6", "查L6" },
             { "Button_CheckL7", "查L7" },
             { "Button_CheckL8", "查L8" },
+            { "Button_ViewClipboard", "剪貼" },
+            { "Button_TestTile", "測til" },
+            { "Button_ClearTestTile", "清til" },
             { "Button_More", "更多..." },
             { "Button_ShowAll", "全部" },
 
@@ -134,6 +137,10 @@ namespace L1MapViewer.Localization
             { "Label_SelectedAreaGroupsCount", "選取區域群組 ({0})" },
             { "Label_SelectedAreaAllGroups", "區域-全部" },
             { "Placeholder_SearchTileId", "搜尋 TileId..." },
+            { "Placeholder_SearchGroup", "搜尋..." },
+            { "GroupMode_SelectedArea", "選取區域" },
+            { "GroupMode_SelectedAreaAll", "區域-全部" },
+            { "GroupMode_All", "全部" },
             { "Label_SearchResult", "搜尋結果" },
 
             // === Labels - Common ===
@@ -149,6 +156,8 @@ namespace L1MapViewer.Localization
             { "Label_Layer1Coord", "Layer1 座標" },
             { "Label_Zoom", "縮放" },
             { "Label_S32Files", "S32 檔案" },
+            { "Label_S32FileList", "S32 檔案清單" },
+            { "Label_S32FileListCount", "S32 檔案清單 ({0})" },
 
             // === Layer Names ===
             { "Layer_1", "第1層 (地板)" },

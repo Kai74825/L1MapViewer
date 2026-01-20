@@ -90,10 +90,7 @@ namespace L1FlyMapViewer
         public ComboBox comboBox1;  // 保留給介面相容性，但隱藏
         private PictureBox miniMapPictureBox;
 
-        // 左下角 TabControl（地圖列表 / S32 檔案清單）
-        private TabControl leftTabControl;
-        private TabPage tabMapList;
-        private TabPage tabS32Files;
+        // 左下角 TabControl 內容（TabControl 本身在 MapForm.cs 中以 Eto 原生方式建立）
         private TextBox txtMapSearch;
         private ListBox lstMaps;
 
@@ -195,6 +192,7 @@ namespace L1FlyMapViewer
         private Button btnImportFs32;
         private Button btnEditPassable;
         private Button btnEditLayer5;
+        private Button btnMergeL2ToL1;
         private Button btnSaveS32;
         private Button btnReloadMap;
         private Button btnAnalyzeAttr;
@@ -294,10 +292,7 @@ namespace L1FlyMapViewer
             this.comboBox1 = new ComboBox();
             this.miniMapPictureBox = new PictureBox();
 
-            // 左下角 TabControl
-            this.leftTabControl = new TabControl();
-            this.tabMapList = new TabPage();
-            this.tabS32Files = new TabPage();
+            // 左下角 TabControl 內容（TabControl 本身在 MapForm.cs 中建立）
             this.txtMapSearch = new TextBox();
             this.lstMaps = new ListBox();
 
@@ -382,6 +377,7 @@ namespace L1FlyMapViewer
             this.btnRegionEdit = new Button();
             this.btnEditPassable = new Button();
             this.btnEditLayer5 = new Button();
+            this.btnMergeL2ToL1 = new Button();
             this.btnSaveS32 = new Button();
             this.btnReloadMap = new Button();
             this.btnAnalyzeAttr = new Button();
@@ -409,9 +405,6 @@ namespace L1FlyMapViewer
             this.menuStrip1.SuspendLayout();
             this.statusStrip1.SuspendLayout();
             this.leftPanel.SuspendLayout();
-            this.leftTabControl.SuspendLayout();
-            this.tabMapList.SuspendLayout();
-            this.tabS32Files.SuspendLayout();
             ((ISupportInitialize)this.miniMapPictureBox).BeginInit();
             this.tabControl1.SuspendLayout();
             this.tabS32Editor.SuspendLayout();
@@ -823,7 +816,7 @@ namespace L1FlyMapViewer
             this.leftPanel.BorderStyle = BorderStyle.FixedSingle;
             this.leftPanel.GetControls().Add(this.comboBox1);
             this.leftPanel.GetControls().Add(this.miniMapPictureBox);
-            this.leftPanel.GetControls().Add(this.leftTabControl);
+            // leftTabControl 在 MapForm.cs 中以 Eto 原生方式建立
             this.leftPanel.SetDock(DockStyle.Left);
             this.leftPanel.SetLocation(new Point(0, 24));
             this.leftPanel.SetName("leftPanel");
@@ -863,29 +856,7 @@ namespace L1FlyMapViewer
             this.miniMapPictureBox.PreviewKeyDown += new PreviewKeyDownEventHandler(this.miniMapPictureBox_PreviewKeyDown);
             this.miniMapPictureBox.KeyDown += new KeyEventHandler(this.miniMapPictureBox_KeyDown);
 
-            //
-            // leftTabControl
-            //
-            this.leftTabControl.GetControls().Add(this.tabMapList);
-            this.leftTabControl.GetControls().Add(this.tabS32Files);
-            this.leftTabControl.SetLocation(new Point(5, 280));
-            this.leftTabControl.SetName("leftTabControl");
-            this.leftTabControl.SelectedIndex = 0;
-            this.leftTabControl.Size = new Size(268, 365);
-            this.leftTabControl.TabIndex = 2;
-
-            //
-            // tabMapList (地圖列表)
-            //
-            this.tabMapList.GetControls().Add(this.txtMapSearch);
-            this.tabMapList.GetControls().Add(this.lstMaps);
-            this.tabMapList.SetLocation(new Point(4, 24));
-            this.tabMapList.SetName("tabMapList");
-            this.tabMapList.Padding = new Padding(3);
-            this.tabMapList.Size = new Size(260, 337);
-            this.tabMapList.TabIndex = 0;
-            this.tabMapList.Text = "地圖列表";
-            this.tabMapList.SetUseVisualStyleBackColor(true);
+            // leftTabControl, tabMapList, tabS32Files 在 MapForm.cs 中以 Eto 原生方式建立
 
             //
             // txtMapSearch
@@ -906,21 +877,6 @@ namespace L1FlyMapViewer
             this.lstMaps.TabIndex = 1;
             this.lstMaps.SelectedIndexChanged += new System.EventHandler(this.lstMaps_SelectedIndexChanged);
             this.lstMaps.MouseUp += new MouseEventHandler(this.lstMaps_MouseUp);
-
-            //
-            // tabS32Files (S32 檔案清單)
-            //
-            this.tabS32Files.GetControls().Add(this.lblS32Files);
-            this.tabS32Files.GetControls().Add(this.btnS32SelectAll);
-            this.tabS32Files.GetControls().Add(this.btnS32SelectNone);
-            this.tabS32Files.GetControls().Add(this.lstS32Files);
-            this.tabS32Files.SetLocation(new Point(4, 24));
-            this.tabS32Files.SetName("tabS32Files");
-            this.tabS32Files.Padding = new Padding(3);
-            this.tabS32Files.Size = new Size(260, 337);
-            this.tabS32Files.TabIndex = 1;
-            this.tabS32Files.Text = "S32 檔案";
-            this.tabS32Files.SetUseVisualStyleBackColor(true);
 
             //
             // lblS32Files
@@ -1290,6 +1246,17 @@ namespace L1FlyMapViewer
             this.btnEditLayer5.Text = "透明編輯";
             this.btnEditLayer5.SetUseVisualStyleBackColor(true);
             this.btnEditLayer5.Click += new System.EventHandler(this.btnEditLayer5_Click);
+
+            //
+            // btnMergeL2ToL1
+            //
+            this.btnMergeL2ToL1.SetLocation(new Point(190, 35));
+            this.btnMergeL2ToL1.SetName("btnMergeL2ToL1");
+            this.btnMergeL2ToL1.Size = new Size(80, 25);
+            this.btnMergeL2ToL1.TabIndex = 16;
+            this.btnMergeL2ToL1.Text = "L2合併L1";
+            this.btnMergeL2ToL1.SetUseVisualStyleBackColor(true);
+            this.btnMergeL2ToL1.Click += new System.EventHandler(this.btnMergeL2ToL1_Click);
 
             //
             // btnRegionEdit
@@ -1671,7 +1638,11 @@ namespace L1FlyMapViewer
             this.cmbGroupMode.Size = new Size(100, 23);
             this.cmbGroupMode.TabIndex = 8;
             this.cmbGroupMode.DropDownStyle = ComboBoxStyle.DropDownList;
-            this.cmbGroupMode.Items.AddRange(new object[] { "選取區域", "區域-全部", "全部" });
+            this.cmbGroupMode.Items.AddRange(new object[] {
+                LocalizationManager.L("GroupMode_SelectedArea"),
+                LocalizationManager.L("GroupMode_SelectedAreaAll"),
+                LocalizationManager.L("GroupMode_All")
+            });
             this.cmbGroupMode.SelectedIndex = 0;
             this.cmbGroupMode.SelectedIndexChanged += new System.EventHandler(this.cmbGroupMode_SelectedIndexChanged);
 
@@ -2063,10 +2034,6 @@ namespace L1FlyMapViewer
             this.menuStrip1.PerformLayout();
             this.statusStrip1.ResumeLayout(false);
             this.statusStrip1.PerformLayout();
-            this.tabS32Files.ResumeLayout(false);
-            this.tabMapList.ResumeLayout(false);
-            this.tabMapList.PerformLayout();
-            this.leftTabControl.ResumeLayout(false);
             this.leftPanel.ResumeLayout(false);
             this.leftPanel.PerformLayout();
             ((ISupportInitialize)this.miniMapPictureBox).EndInit();

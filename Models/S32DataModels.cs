@@ -23,6 +23,12 @@ namespace L1MapViewer.Models
     public class S32Data
     {
         /// <summary>
+        /// 當任何 S32Data 的 IsModified 狀態變更時觸發
+        /// 參數: (S32Data sender, bool isModified)
+        /// </summary>
+        public static event Action<S32Data, bool> ModifiedStateChanged;
+
+        /// <summary>
         /// 標準寬度 (Layer1 本地座標)
         /// </summary>
         public const int StandardWidth = 128;
@@ -80,7 +86,19 @@ namespace L1MapViewer.Models
         public Struct.L1MapSeg SegInfo { get; set; }
 
         // 是否已修改
-        public bool IsModified { get; set; }
+        private bool _isModified;
+        public bool IsModified
+        {
+            get => _isModified;
+            set
+            {
+                if (_isModified != value)
+                {
+                    _isModified = value;
+                    ModifiedStateChanged?.Invoke(this, value);
+                }
+            }
+        }
 
         /// <summary>
         /// 實際資料寬度 - Layer1 本地座標系統

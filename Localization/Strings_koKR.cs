@@ -115,6 +115,9 @@ namespace L1MapViewer.Localization
             { "Button_CheckL6", "L6 확인" },
             { "Button_CheckL7", "L7 확인" },
             { "Button_CheckL8", "L8 확인" },
+            { "Button_ViewClipboard", "붙여넣기" },
+            { "Button_TestTile", "테스트" },
+            { "Button_ClearTestTile", "지우기" },
             { "Button_More", "더보기..." },
             { "Button_ShowAll", "전체" },
 
@@ -134,6 +137,10 @@ namespace L1MapViewer.Localization
             { "Label_SelectedAreaGroupsCount", "선택 영역 그룹 ({0})" },
             { "Label_SelectedAreaAllGroups", "영역-전체" },
             { "Placeholder_SearchTileId", "TileId 검색..." },
+            { "Placeholder_SearchGroup", "검색..." },
+            { "GroupMode_SelectedArea", "선택 영역" },
+            { "GroupMode_SelectedAreaAll", "영역-전체" },
+            { "GroupMode_All", "전체" },
             { "Label_SearchResult", "검색 결과" },
 
             // === Labels - Common ===
