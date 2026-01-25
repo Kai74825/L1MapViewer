@@ -7018,26 +7018,27 @@ namespace L1FlyMapViewer
 
             var attr = s32Data.Layer3[cellY, layer3X];
 
-            // 先清除現有的區域標記（根據 MapTool 邏輯，清除 bit 2 和 bit 3）
-            attr.Attribute1 = (short)(attr.Attribute1 & ~0x0C); // 清除 0x04 和 0x08 位元
-            attr.Attribute2 = (short)(attr.Attribute2 & ~0x0C); // 清除 0x04 和 0x08 位元
-
-            // 根據區域類型設定標記（MapTool 邏輯）
+            // 根據區域類型設定標記
             switch (regionType)
             {
                 case RegionType.Safe:
-                    attr.Attribute1 = (short)(attr.Attribute1 | 0x04); // 設定 bit 2 = 安全區域
-                    attr.Attribute2 = (short)(attr.Attribute2 | 0x04);
+                    // 清除區域標記後設定安全區域
+                    attr.Attribute1 = (short)((attr.Attribute1 & ~0x0C) | 0x04); // 清除 bit 2/3，設定 bit 2
+                    attr.Attribute2 = (short)((attr.Attribute2 & ~0x0C) | 0x04);
                     this.toolStripStatusLabel1.Text = $"已設定 ({gameX},{gameY}) 為安全區域";
                     break;
                 case RegionType.Combat:
-                    attr.Attribute1 = (short)(attr.Attribute1 | 0x08); // 設定 bit 3 = 戰鬥區域
-                    attr.Attribute2 = (short)(attr.Attribute2 | 0x08);
+                    // 清除區域標記後設定戰鬥區域
+                    attr.Attribute1 = (short)((attr.Attribute1 & ~0x0C) | 0x08); // 清除 bit 2/3，設定 bit 3
+                    attr.Attribute2 = (short)((attr.Attribute2 & ~0x0C) | 0x08);
                     this.toolStripStatusLabel1.Text = $"已設定 ({gameX},{gameY}) 為戰鬥區域";
                     break;
                 case RegionType.Normal:
                 default:
-                    // 一般區域不需要特殊標記（已在上面清除）
+                    // 一般區域：清除高位值，只保留 bit 0（不可通行標記）
+                    // 處理例外值如 0x41 (65)，這些值會被判定為安全區
+                    attr.Attribute1 = (short)(attr.Attribute1 & 0x01);
+                    attr.Attribute2 = (short)(attr.Attribute2 & 0x01);
                     this.toolStripStatusLabel1.Text = $"已設定 ({gameX},{gameY}) 為一般區域";
                     break;
             }
@@ -7083,20 +7084,24 @@ namespace L1FlyMapViewer
                 short oldAttr1 = attr.Attribute1;
                 short oldAttr2 = attr.Attribute2;
 
-                // 清除現有的區域標記（MapTool 邏輯）
-                attr.Attribute1 = (short)(attr.Attribute1 & ~0x0C);
-                attr.Attribute2 = (short)(attr.Attribute2 & ~0x0C);
-
-                // 設定新的區域標記（MapTool 邏輯）
+                // 根據區域類型設定標記
                 switch (regionType)
                 {
                     case RegionType.Safe:
-                        attr.Attribute1 = (short)(attr.Attribute1 | 0x04);
-                        attr.Attribute2 = (short)(attr.Attribute2 | 0x04);
+                        // 清除區域標記後設定安全區域
+                        attr.Attribute1 = (short)((attr.Attribute1 & ~0x0C) | 0x04);
+                        attr.Attribute2 = (short)((attr.Attribute2 & ~0x0C) | 0x04);
                         break;
                     case RegionType.Combat:
-                        attr.Attribute1 = (short)(attr.Attribute1 | 0x08);
-                        attr.Attribute2 = (short)(attr.Attribute2 | 0x08);
+                        // 清除區域標記後設定戰鬥區域
+                        attr.Attribute1 = (short)((attr.Attribute1 & ~0x0C) | 0x08);
+                        attr.Attribute2 = (short)((attr.Attribute2 & ~0x0C) | 0x08);
+                        break;
+                    case RegionType.Normal:
+                    default:
+                        // 一般區域：清除高位值，只保留 bit 0（不可通行標記）
+                        attr.Attribute1 = (short)(attr.Attribute1 & 0x01);
+                        attr.Attribute2 = (short)(attr.Attribute2 & 0x01);
                         break;
                 }
 
