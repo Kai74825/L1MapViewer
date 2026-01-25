@@ -16,6 +16,10 @@ namespace L1MapViewer.Helper
         {
             // if (value == 33 || value == 65 || value == 69 || value == 73 || value == 77)
             //     return 5;
+            if (value == 65)
+            {
+                return 5;
+            }
             return value;
         }
 
