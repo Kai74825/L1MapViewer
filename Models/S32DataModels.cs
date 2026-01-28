@@ -1,9 +1,19 @@
 using System;
 using System.Collections.Generic;
 using L1MapViewer.Other;
+using Lin.Helper.Core.Map;
 
 namespace L1MapViewer.Models
 {
+    // 使用 Core 類型別名，方便後續遷移
+    using CoreS32L1Floor = Lin.Helper.Core.Map.S32L1Floor;
+    using CoreS32L2FloorCover = Lin.Helper.Core.Map.S32L2FloorCover;
+    using CoreS32L3PassAndArea = Lin.Helper.Core.Map.S32L3PassAndArea;
+    using CoreS32L4Building = Lin.Helper.Core.Map.S32L4Building;
+    using CoreS32L5Opacity = Lin.Helper.Core.Map.S32L5Opacity;
+    using CoreS32L7ExitPortal = Lin.Helper.Core.Map.S32L7ExitPortal;
+    using CoreS32L8SPREffect = Lin.Helper.Core.Map.S32L8SPREffect;
+    using CoreTileInfo = Lin.Helper.Core.Map.TileInfo;
     /// <summary>
     /// S32 檔案資訊類別
     /// </summary>
@@ -192,72 +202,34 @@ namespace L1MapViewer.Models
     }
 
     /// <summary>
-    /// 第二層項目 - X(BYTE), Y(BYTE), IndexId(BYTE), TileId(USHORT), UK(BYTE)
+    /// 第二層項目 (繼承 Core 類型)
     /// </summary>
-    public class Layer2Item
-    {
-        public byte X { get; set; }
-        public byte Y { get; set; }
-        public byte IndexId { get; set; }
-        public ushort TileId { get; set; }
-        public byte UK { get; set; }
-    }
+    public class Layer2Item : CoreS32L2FloorCover { }
 
     /// <summary>
-    /// 地圖屬性（第三層）
+    /// 地圖屬性（第三層）- 繼承 Core 類型
     /// </summary>
-    public class MapAttribute
-    {
-        public short Attribute1 { get; set; }
-        public short Attribute2 { get; set; }
-    }
+    public class MapAttribute : CoreS32L3PassAndArea { }
 
     /// <summary>
-    /// 物件 Tile（第四層）
+    /// 物件 Tile（第四層）- 繼承 Core 類型
     /// </summary>
-    public class ObjectTile
-    {
-        public int GroupId { get; set; }
-        public int X { get; set; }
-        public int Y { get; set; }
-        public int Layer { get; set; }
-        public int IndexId { get; set; }
-        public int TileId { get; set; }
-    }
+    public class ObjectTile : CoreS32L4Building { }
 
     /// <summary>
-    /// 第五層項目 - 事件
+    /// 第五層項目 - 事件 (繼承 Core 類型)
     /// </summary>
-    public class Layer5Item
-    {
-        public byte X { get; set; }
-        public byte Y { get; set; }
-        public ushort ObjectIndex { get; set; }
-        public byte Type { get; set; }
-    }
+    public class Layer5Item : CoreS32L5Opacity { }
 
     /// <summary>
-    /// 第七層項目 - 傳送點、入口點
+    /// 第七層項目 - 傳送點、入口點 (繼承 Core 類型)
     /// </summary>
-    public class Layer7Item
-    {
-        public string Name { get; set; } = string.Empty;
-        public byte X { get; set; }
-        public byte Y { get; set; }
-        public ushort TargetMapId { get; set; }
-        public int PortalId { get; set; }
-    }
+    public class Layer7Item : CoreS32L7ExitPortal { }
 
     /// <summary>
-    /// 第八層項目 - 特效、裝飾品
+    /// 第八層項目 - 特效、裝飾品 (繼承 Core 類型)
     /// </summary>
-    public class Layer8Item
-    {
-        public ushort SprId { get; set; }
-        public ushort X { get; set; }
-        public ushort Y { get; set; }
-        public int ExtendedData { get; set; }  // 僅當 HasExtendedData 為 true 時使用
-    }
+    public class Layer8Item : CoreS32L8SPREffect { }
 
     /// <summary>
     /// S32Data 的 Layer8 擴展資訊
@@ -269,26 +241,19 @@ namespace L1MapViewer.Models
     }
 
     /// <summary>
-    /// 格子資料
+    /// 格子資料 (繼承 Core 類型)
     /// </summary>
-    public class TileCell
+    public class TileCell : CoreS32L1Floor
     {
-        public int X { get; set; }
-        public int Y { get; set; }
-        public int TileId { get; set; }
-        public int IndexId { get; set; }
         public bool IsModified { get; set; }
     }
 
     /// <summary>
-    /// Tile 資訊
+    /// Tile 資訊 (繼承 Core 類型)
     /// </summary>
-    public class TileInfo
+    public class TileInfo : CoreTileInfo
     {
-        public int TileId { get; set; }
-        public int IndexId { get; set; }
         public Bitmap? Thumbnail { get; set; }
-        public int UsageCount { get; set; }
     }
 
     /// <summary>
