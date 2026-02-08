@@ -16,7 +16,6 @@ public class StringFormat : IDisposable
 {
     public StringAlignment Alignment { get; set; } = StringAlignment.Near;
     public StringAlignment LineAlignment { get; set; } = StringAlignment.Near;
-    public StringFormatFlags FormatFlags { get; set; }
     public StringTrimming Trimming { get; set; } = StringTrimming.None;
 
     public static StringFormat GenericDefault => new StringFormat();
@@ -28,19 +27,6 @@ public class StringFormat : IDisposable
 public enum StringAlignment { Near, Center, Far }
 public enum StringTrimming { None, Character, Word, EllipsisCharacter, EllipsisWord, EllipsisPath }
 
-[Flags]
-public enum StringFormatFlags
-{
-    DirectionRightToLeft = 1,
-    DirectionVertical = 2,
-    FitBlackBox = 4,
-    DisplayFormatControl = 32,
-    NoFontFallback = 1024,
-    MeasureTrailingSpaces = 2048,
-    NoWrap = 4096,
-    LineLimit = 8192,
-    NoClip = 16384
-}
 
 /// <summary>
 /// ImageAttributes for GDI+ image manipulation
@@ -51,22 +37,11 @@ public class ImageAttributes : IDisposable
     public Eto.Drawing.Color ColorKeyHigh { get; private set; }
     public bool HasColorKey { get; private set; }
 
-    public void SetColorMatrix(ColorMatrix matrix) { }
-    public void SetColorMatrix(ColorMatrix matrix, ColorMatrixFlag flags) { }
-    public void SetColorMatrix(ColorMatrix matrix, ColorMatrixFlag flags, ColorAdjustType type) { }
-    public void SetWrapMode(WrapMode mode) { }
-    public void SetWrapMode(WrapMode mode, Color color) { }
-
     public void SetColorKey(Eto.Drawing.Color colorLow, Eto.Drawing.Color colorHigh)
     {
         ColorKeyLow = colorLow;
         ColorKeyHigh = colorHigh;
         HasColorKey = true;
-    }
-
-    public void SetColorKey(Eto.Drawing.Color colorLow, Eto.Drawing.Color colorHigh, ColorAdjustType type)
-    {
-        SetColorKey(colorLow, colorHigh);
     }
 
     public void ClearColorKey()
@@ -77,22 +52,6 @@ public class ImageAttributes : IDisposable
     public void Dispose() { }
 }
 
-public class ColorMatrix
-{
-    public float[][] Matrix { get; set; }
-    public float Matrix00 { get; set; } = 1;
-    public float Matrix11 { get; set; } = 1;
-    public float Matrix22 { get; set; } = 1;
-    public float Matrix33 { get; set; } = 1;
-    public float Matrix44 { get; set; } = 1;
-
-    public ColorMatrix() { }
-    public ColorMatrix(float[][] matrix) { Matrix = matrix; }
-}
-
-public enum ColorMatrixFlag { Default, SkipGrays, AltGrays }
-public enum ColorAdjustType { Default, Bitmap, Brush, Pen, Text, Count, Any }
-public enum WrapMode { Tile, TileFlipX, TileFlipY, TileFlipXY, Clamp }
 
 /// <summary>
 /// TextRenderingHint for graphics compatibility
@@ -200,7 +159,6 @@ public class WinFormsButton : Eto.Forms.Button
     public new string Name { get => ID; set => ID = value; }
     public bool UseVisualStyleBackColor { get; set; }
     public FlatStyle FlatStyle { get; set; }
-    public FlatButtonAppearance FlatAppearance { get; } = new FlatButtonAppearance();
     public new Eto.Drawing.Image Image { get => base.Image; set => base.Image = value; }
     public ContentAlignment ImageAlign { get; set; }
     public ContentAlignment TextAlign { get; set; }
@@ -284,7 +242,6 @@ public class WinFormsTextBox : Eto.Forms.TextBox
     public bool WordWrap { get; set; }
     public bool AcceptsReturn { get; set; }
     public bool AcceptsTab { get; set; }
-    public CharacterCasing CharacterCasing { get; set; }
     public char PasswordChar { get; set; }
     public bool UseSystemPasswordChar { get; set; }
     public int SelectionStart { get; set; }
@@ -305,10 +262,7 @@ public class WinFormsTextBox : Eto.Forms.TextBox
     }
 }
 
-/// <summary>
-/// CharacterCasing enum for TextBox compatibility
-/// </summary>
-public enum CharacterCasing { Normal, Upper, Lower }
+
 
 /// <summary>
 /// WinForms-compatible Panel wrapper
@@ -455,11 +409,10 @@ public class WinFormsForm : Eto.Forms.Form
     public bool KeyPreview { get; set; }
     public bool TopMost { get => Topmost; set => Topmost = value; }
     public SizeF AutoScaleDimensions { get; set; }
-    public AutoScaleMode AutoScaleMode { get; set; }
     public Eto.Forms.MenuBar MainMenuStrip { get => Menu; set => Menu = value; }
     public new Eto.Drawing.Icon Icon { get => base.Icon; set => base.Icon = value; }
     public new bool ShowInTaskbar { get => base.ShowInTaskbar; set => base.ShowInTaskbar = value; }
-    public IWin32Window Owner { get; set; }
+    public new Eto.Forms.Window Owner { get => base.Owner; set => base.Owner = value; }
     public bool ControlBox { get; set; } = true;
     public bool MaximizeBox { get => Maximizable; set => Maximizable = value; }
     public bool MinimizeBox { get => Minimizable; set => Minimizable = value; }
@@ -1029,7 +982,6 @@ public class WinFormsGroupBox : Eto.Forms.GroupBox
     public bool TabStop { get; set; }
     public Padding Margin { get; set; }
     public new string Name { get => ID; set => ID = value; }
-    public AutoSizeMode AutoSizeMode { get; set; }
 
     public Color BackColor { get => BackgroundColor; set => BackgroundColor = value; }
     public Color ForeColor { get => TextColor; set => TextColor = value; }
@@ -1257,7 +1209,6 @@ public class WinFormsProgressBar : Eto.Forms.ProgressBar
     public int TabIndex { get; set; }
     public new string Name { get => ID; set => ID = value; }
     public Padding Margin { get; set; }
-    public ProgressBarStyle Style { get; set; }
     public int Step { get; set; }
 
     public new int Maximum { get => MaxValue; set => MaxValue = value; }
@@ -1662,7 +1613,7 @@ public class WinFormsListView : Eto.Forms.GridView
     // HitTest
     public ListViewHitTestInfo HitTest(int x, int y)
     {
-        return new ListViewHitTestInfo(null, null, ListViewHitTestLocations.None);
+        return new ListViewHitTestInfo(null, null);
     }
 
     public ListViewHitTestInfo HitTest(Point location) => HitTest(location.X, location.Y);
@@ -1741,31 +1692,14 @@ public class ListViewHitTestInfo
 {
     public ListViewItem Item { get; }
     public ListViewItem.ListViewSubItem SubItem { get; }
-    public ListViewHitTestLocations Location { get; }
 
-    public ListViewHitTestInfo(ListViewItem item, ListViewItem.ListViewSubItem subItem, ListViewHitTestLocations location)
+    public ListViewHitTestInfo(ListViewItem item, ListViewItem.ListViewSubItem subItem)
     {
         Item = item;
         SubItem = subItem;
-        Location = location;
     }
 }
 
-/// <summary>
-/// ListViewHitTestLocations enum
-/// </summary>
-[Flags]
-public enum ListViewHitTestLocations
-{
-    None = 0,
-    AboveClientArea = 256,
-    BelowClientArea = 16,
-    Image = 2,
-    Label = 4,
-    LeftOfClientArea = 64,
-    RightOfClientArea = 32,
-    StateImage = 512
-}
 
 /// <summary>
 /// ColumnHeaderAutoResizeStyle enum
@@ -1920,7 +1854,6 @@ public class WinFormsToolStripButton : Eto.Forms.ButtonToolItem
     public WinFormsToolStripButton() { }
     public WinFormsToolStripButton(string text) { Text = text; }
 
-    public ToolStripItemDisplayStyle DisplayStyle { get; set; }
     public new string Name { get => ID; set => ID = value; }
     public Eto.Drawing.Size Size { get; set; }
     public string ToolTipText { get => ToolTip; set => ToolTip = value; }
@@ -2120,7 +2053,6 @@ public class WinFormsDialog : Eto.Forms.Dialog
     public FormBorderStyle FormBorderStyle { get; set; }
     public bool KeyPreview { get; set; }
     public SizeF AutoScaleDimensions { get; set; }
-    public AutoScaleMode AutoScaleMode { get; set; }
     public bool ControlBox { get; set; } = true;
     public bool MaximizeBox { get => Maximizable; set => Maximizable = value; }
     public bool MinimizeBox { get => Minimizable; set => Minimizable = value; }
@@ -2681,43 +2613,6 @@ public class GraphicsPath : IDisposable
     }
 }
 
-/// <summary>
-/// IWin32Window stub - not needed on cross-platform
-/// </summary>
-public interface IWin32Window
-{
-    IntPtr Handle { get; }
-}
-
-/// <summary>
-/// UITypeEditor stub - designer support not needed at runtime
-/// </summary>
-public class UITypeEditor
-{
-    public virtual UITypeEditorEditStyle GetEditStyle(System.ComponentModel.ITypeDescriptorContext context)
-        => UITypeEditorEditStyle.None;
-
-    public virtual object EditValue(System.ComponentModel.ITypeDescriptorContext context,
-        IServiceProvider provider, object value) => value;
-}
-
-public enum UITypeEditorEditStyle
-{
-    None,
-    Modal,
-    DropDown
-}
-
-/// <summary>
-/// DataGridViewCellFormattingEventArgs stub
-/// </summary>
-public class DataGridViewCellFormattingEventArgs : EventArgs
-{
-    public int ColumnIndex { get; set; }
-    public int RowIndex { get; set; }
-    public object Value { get; set; }
-    public bool FormattingApplied { get; set; }
-}
 
 /// <summary>
 /// ColumnClickEventArgs compatibility
@@ -2921,16 +2816,6 @@ public readonly struct DialogResultCompat
     public override string ToString() => _value.ToString();
 }
 
-/// <summary>
-/// ToolStripItemDisplayStyle compatibility
-/// </summary>
-public enum ToolStripItemDisplayStyle
-{
-    None,
-    Text,
-    Image,
-    ImageAndText
-}
 
 /// <summary>
 /// FlowLayoutPanel compatibility - use StackLayout
@@ -2957,7 +2842,6 @@ public enum FlowDirection
 public class CheckedListBox : Eto.Forms.Scrollable
 {
     public bool CheckOnClick { get; set; } = true;
-    public DrawMode DrawMode { get; set; } = DrawMode.Normal;
     public event ItemCheckEventHandler ItemCheck;
     public event EventHandler SelectedIndexChanged;
     public event DrawItemEventHandler DrawItem;
@@ -3402,25 +3286,6 @@ public class ToolTip
     }
 }
 
-/// <summary>
-/// IWindowsFormsEditorService stub
-/// </summary>
-public interface IWindowsFormsEditorService
-{
-    void CloseDropDown();
-    void DropDownControl(object control);
-    Eto.Forms.DialogResult ShowDialog(Eto.Forms.Dialog dialog);
-}
-
-/// <summary>
-/// ToolboxBitmapAttribute stub
-/// </summary>
-[AttributeUsage(AttributeTargets.Class)]
-public class ToolboxBitmapAttribute : Attribute
-{
-    public ToolboxBitmapAttribute(Type type, string resourceName) { }
-    public ToolboxBitmapAttribute(string imageFile) { }
-}
 
 /// <summary>
 /// FormBorderStyle enum compatibility
@@ -3758,16 +3623,6 @@ public enum ContentAlignment
     BottomRight = 1024
 }
 
-/// <summary>
-/// AutoScaleMode enum stub
-/// </summary>
-public enum AutoScaleMode
-{
-    None,
-    Font,
-    Dpi,
-    Inherit
-}
 
 /// <summary>
 /// ControlCollection wrapper to make Controls.Add() work
@@ -5076,11 +4931,6 @@ public static class ControlPaint
 {
     public static void DrawBorder3D(Graphics g, Rectangle rect)
     {
-        DrawBorder3D(g, rect, Border3DStyle.Etched);
-    }
-
-    public static void DrawBorder3D(Graphics g, Rectangle rect, Border3DStyle style)
-    {
         var pen1 = new Eto.Drawing.Pen(Eto.Drawing.Color.FromArgb(160, 160, 160));
         var pen2 = new Eto.Drawing.Pen(Eto.Drawing.Colors.White);
 
@@ -5132,22 +4982,6 @@ public static class ControlPaint
     }
 }
 
-/// <summary>
-/// Border3DStyle enum for WinForms compatibility
-/// </summary>
-public enum Border3DStyle
-{
-    Adjust = 8192,
-    Bump = 9,
-    Etched = 6,
-    Flat = 16394,
-    Raised = 5,
-    RaisedInner = 4,
-    RaisedOuter = 1,
-    Sunken = 10,
-    SunkenInner = 8,
-    SunkenOuter = 2
-}
 
 /// <summary>
 /// ButtonState enum for WinForms compatibility
@@ -5163,19 +4997,6 @@ public enum ButtonState
     All = 18176
 }
 
-/// <summary>
-/// GraphicsUnit enum for WinForms compatibility
-/// </summary>
-public enum GraphicsUnit
-{
-    World = 0,
-    Display = 1,
-    Pixel = 2,
-    Point = 3,
-    Inch = 4,
-    Document = 5,
-    Millimeter = 6
-}
 
 /// <summary>
 /// Additional color values not in Eto.Drawing.Colors
@@ -5587,19 +5408,8 @@ public static class ButtonExtensions
     public static void SetBackColor(this Eto.Forms.Button button, Eto.Drawing.Color color) => button.BackgroundColor = color;
     public static void SetForeColor(this Eto.Forms.Button button, Eto.Drawing.Color color) => button.TextColor = color;
     public static void SetFlatStyle(this Eto.Forms.Button button, FlatStyle style) { }
-    public static void SetFlatAppearance(this Eto.Forms.Button button, FlatButtonAppearance appearance) { }
 }
 
-/// <summary>
-/// FlatButtonAppearance for WinForms compatibility
-/// </summary>
-public class FlatButtonAppearance
-{
-    public Eto.Drawing.Color BorderColor { get; set; }
-    public int BorderSize { get; set; }
-    public Eto.Drawing.Color MouseDownBackColor { get; set; }
-    public Eto.Drawing.Color MouseOverBackColor { get; set; }
-}
 
 /// <summary>
 /// Form/Window extensions for WinForms compatibility
@@ -5620,7 +5430,6 @@ public static class FormExtensions
     public static void SetTopMost(this Eto.Forms.Form form, bool value) => form.Topmost = value;
     public static void SetShowInTaskbar(this Eto.Forms.Form form, bool value) => form.ShowInTaskbar = value;
     public static void SetAutoScaleDimensions(this Eto.Forms.Form form, Eto.Drawing.SizeF size) { }
-    public static void SetAutoScaleMode(this Eto.Forms.Form form, AutoScaleMode mode) { }
     public static void SetMainMenuStrip(this Eto.Forms.Form form, Eto.Forms.MenuBar menu) => form.Menu = menu;
 }
 
@@ -5842,36 +5651,7 @@ public enum FixedPanel
     Panel2
 }
 
-/// <summary>
-/// ProgressBar extensions for WinForms compatibility
-/// </summary>
-public static class ProgressBarExtensions
-{
-    public static void SetStyle(this Eto.Forms.ProgressBar progressBar, ProgressBarStyle style)
-    {
-        progressBar.Indeterminate = style == ProgressBarStyle.Marquee;
-    }
-}
 
-/// <summary>
-/// ProgressBarStyle enum for compatibility
-/// </summary>
-public enum ProgressBarStyle
-{
-    Blocks,
-    Continuous,
-    Marquee
-}
-
-/// <summary>
-/// DrawMode enum for WinForms compatibility
-/// </summary>
-public enum DrawMode
-{
-    Normal,
-    OwnerDrawFixed,
-    OwnerDrawVariable
-}
 
 /// <summary>
 /// GroupBox extensions for WinForms compatibility
@@ -5880,17 +5660,8 @@ public static class GroupBoxExtensions
 {
     public static void SetDock(this Eto.Forms.GroupBox groupBox, DockStyle dock) { }
     public static void SetAutoSize(this Eto.Forms.GroupBox groupBox, bool value) { }
-    public static void SetAutoSizeMode(this Eto.Forms.GroupBox groupBox, AutoSizeMode mode) { }
 }
 
-/// <summary>
-/// AutoSizeMode enum for compatibility
-/// </summary>
-public enum AutoSizeMode
-{
-    GrowAndShrink,
-    GrowOnly
-}
 
 /// <summary>
 /// MenuBar extensions for WinForms MenuStrip compatibility

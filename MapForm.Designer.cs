@@ -799,7 +799,6 @@ namespace L1FlyMapViewer
             //
             this.toolStripProgressBar1.SetName("toolStripProgressBar1");
             this.toolStripProgressBar1.Size = new Size(100, 16);
-            this.toolStripProgressBar1.Style = ProgressBarStyle.Marquee;
             this.toolStripProgressBar1.Visible = false;
 
             //
@@ -950,7 +949,6 @@ namespace L1FlyMapViewer
             this.lstS32Files.Size = new Size(254, 305);
             this.lstS32Files.TabIndex = 3;
             this.lstS32Files.CheckOnClick = true;
-            this.lstS32Files.DrawMode = DrawMode.OwnerDrawFixed;
             this.lstS32Files.SelectedIndexChanged += new System.EventHandler(this.lstS32Files_SelectedIndexChanged);
             this.lstS32Files.ItemCheck += new ItemCheckEventHandler(this.lstS32Files_ItemCheck);
             this.lstS32Files.MouseUp += new MouseEventHandler(this.lstS32Files_MouseUp);
@@ -2055,7 +2053,6 @@ namespace L1FlyMapViewer
             // MapForm
             //
             this.AutoScaleDimensions = new SizeF(6F, 13F);
-            this.AutoScaleMode = AutoScaleMode.Font;
             this.ClientSize = new Size(1400, 700);
             this.GetControls().Add(this.toolbarContainer);
             this.GetControls().Add(this.rightPanel);

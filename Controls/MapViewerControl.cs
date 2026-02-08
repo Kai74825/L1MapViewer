@@ -562,10 +562,6 @@ namespace L1MapViewer.Controls
                 ForeColor = Color.FromArgb(102, 102, 102),
                 Cursor = Cursors.Hand,
             };
-            btn.FlatAppearance.BorderColor = Color.FromArgb(218, 218, 218);
-            btn.FlatAppearance.BorderSize = 1;
-            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(245, 245, 245);
-            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(235, 235, 235);
             return btn;
         }
 
@@ -647,10 +643,6 @@ namespace L1MapViewer.Controls
                 ForeColor = Color.FromArgb(102, 102, 102),
                 Cursor = Cursors.Hand,
             };
-            btn.FlatAppearance.BorderColor = Color.FromArgb(218, 218, 218);
-            btn.FlatAppearance.BorderSize = 1;
-            btn.FlatAppearance.MouseOverBackColor = Color.FromArgb(245, 245, 245);
-            btn.FlatAppearance.MouseDownBackColor = Color.FromArgb(235, 235, 235);
             return btn;
         }
 
