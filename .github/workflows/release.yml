@@ -201,23 +201,29 @@ jobs:
     - name: Build x64
       run: |
         # 關閉 R2R 讓 managed DLL 架構無關，以便建立 universal binary
-        # 使用 UseGtk=false 強制使用 native macOS platform
-        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0 --configuration Release --runtime osx-x64 --self-contained true -o publish-x64 /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false
+        # 使用 UseGtk=false + net10.0-macos 確保包含 Microsoft.macOS 綁定 (fixes #4)
+        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-x64 --self-contained true -o publish-x64 /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false
 
     - name: Build arm64
       run: |
-        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0 --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64 /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false
+        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64 /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false
 
     - name: Verify native macOS platform
       run: |
         echo "=== Checking x64 build ==="
         ls -la publish-x64/Eto.*.dll || true
-        ls -la publish-x64/Microsoft.macOS.dll 2>/dev/null || echo "(Microsoft.macOS.dll not found separately - may be bundled)"
+        ls -la publish-x64/Microsoft.macOS.dll 2>/dev/null || true
 
         if [ -f "publish-x64/Eto.macOS.dll" ]; then
           echo "✓ Eto.macOS.dll found in x64 build"
         else
           echo "✗ ERROR: Eto.macOS.dll NOT found in x64 build"
+          exit 1
+        fi
+        if [ -f "publish-x64/Microsoft.macOS.dll" ]; then
+          echo "✓ Microsoft.macOS.dll found in x64 build (required by Eto.macOS.dll)"
+        else
+          echo "✗ ERROR: Microsoft.macOS.dll NOT found in x64 build - Eto.macOS.dll will fail at runtime!"
           exit 1
         fi
         if [ -f "publish-x64/Eto.Gtk.dll" ]; then
@@ -229,12 +235,18 @@ jobs:
 
         echo "=== Checking arm64 build ==="
         ls -la publish-arm64/Eto.*.dll || true
-        ls -la publish-arm64/Microsoft.macOS.dll 2>/dev/null || echo "(Microsoft.macOS.dll not found separately - may be bundled)"
+        ls -la publish-arm64/Microsoft.macOS.dll 2>/dev/null || true
 
         if [ -f "publish-arm64/Eto.macOS.dll" ]; then
           echo "✓ Eto.macOS.dll found in arm64 build"
         else
           echo "✗ ERROR: Eto.macOS.dll NOT found in arm64 build"
+          exit 1
+        fi
+        if [ -f "publish-arm64/Microsoft.macOS.dll" ]; then
+          echo "✓ Microsoft.macOS.dll found in arm64 build (required by Eto.macOS.dll)"
+        else
+          echo "✗ ERROR: Microsoft.macOS.dll NOT found in arm64 build - Eto.macOS.dll will fail at runtime!"
           exit 1
         fi
         if [ -f "publish-arm64/Eto.Gtk.dll" ]; then

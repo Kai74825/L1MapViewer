@@ -2,9 +2,12 @@
 
     <PropertyGroup>
         <OutputType>WinExe</OutputType>
-        <!-- Use Windows TFM on Windows for WPF support, macOS TFM when UseGtk=false, plain net10.0 otherwise -->
+        <!-- Use Windows TFM on Windows for WPF support, macOS TFM for native macOS builds, plain net10.0 otherwise -->
         <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows</TargetFramework>
-        <TargetFramework Condition="!$([MSBuild]::IsOSPlatform('Windows'))">net10.0</TargetFramework>
+        <!-- macOS native build (UseGtk=false): use net10.0-macos to include Microsoft.macOS bindings required by Eto.macOS.dll -->
+        <TargetFramework Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">net10.0-macos</TargetFramework>
+        <!-- macOS GTK build (UseGtk=true, default) or Linux: use plain net10.0 -->
+        <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Linux')) OR ($([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' == 'true')">net10.0</TargetFramework>
         <UseWPF Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</UseWPF>
         <!-- Define WINDOWS for conditional compilation -->
         <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(DefineConstants);WINDOWS</DefineConstants>
