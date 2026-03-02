@@ -968,7 +968,9 @@ namespace L1FlyMapViewer
             this.tabControl1.GetControls().Add(this.tabS32Editor);
             this.tabControl1.SetLocation(new Point(290, 34));
             this.tabControl1.SetName("tabControl1");
-            this.tabControl1.SelectedIndex = 0;  // S32 編輯器
+            // Defer SelectedIndex to avoid NSRangeException on macOS native (tabs not yet added to NSTabView)
+            if (this.tabControl1.Pages.Count > 0)
+                this.tabControl1.SelectedIndex = 0;  // S32 編輯器
             this.tabControl1.Size = new Size(710, 640);
             this.tabControl1.TabIndex = 3;
 

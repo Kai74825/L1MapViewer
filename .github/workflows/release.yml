@@ -200,124 +200,87 @@ jobs:
 
     - name: Build x64
       run: |
+        # 使用 net10.0-macos TFM 將 Objective-C bridge 編譯進執行檔 (fixes #4)
         # 關閉 R2R 讓 managed DLL 架構無關，以便建立 universal binary
-        # 使用 UseGtk=false + net10.0-macos 確保包含 Microsoft.macOS 綁定 (fixes #4)
-        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-x64 --self-contained true -o publish-x64 /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false
+        # CreatePackage=false 防止產生 .pkg，只保留平面檔案
+        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-x64 --self-contained true -o publish-x64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false
 
     - name: Build arm64
       run: |
-        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64 /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false
+        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false
 
     - name: Verify native macOS platform
       run: |
-        echo "=== Checking x64 build ==="
-        ls -la publish-x64/Eto.*.dll || true
-        ls -la publish-x64/Microsoft.macOS.dll 2>/dev/null || true
+        ARM64_APP=bin/Release/net10.0-macos/osx-arm64/L1MapViewerCore.app
+        X64_APP=bin/Release/net10.0-macos/osx-x64/L1MapViewerCore.app
 
-        if [ -f "publish-x64/Eto.macOS.dll" ]; then
-          echo "✓ Eto.macOS.dll found in x64 build"
-        else
-          echo "✗ ERROR: Eto.macOS.dll NOT found in x64 build"
-          exit 1
-        fi
-        if [ -f "publish-x64/Microsoft.macOS.dll" ]; then
-          echo "✓ Microsoft.macOS.dll found in x64 build (required by Eto.macOS.dll)"
-        else
-          echo "✗ ERROR: Microsoft.macOS.dll NOT found in x64 build - Eto.macOS.dll will fail at runtime!"
-          exit 1
-        fi
-        if [ -f "publish-x64/Eto.Gtk.dll" ]; then
-          echo "✗ ERROR: Eto.Gtk.dll should NOT be in x64 build (UseGtk=false)"
-          exit 1
-        else
-          echo "✓ Eto.Gtk.dll correctly excluded from x64 build"
-        fi
-
-        echo "=== Checking arm64 build ==="
-        ls -la publish-arm64/Eto.*.dll || true
-        ls -la publish-arm64/Microsoft.macOS.dll 2>/dev/null || true
-
-        if [ -f "publish-arm64/Eto.macOS.dll" ]; then
-          echo "✓ Eto.macOS.dll found in arm64 build"
-        else
-          echo "✗ ERROR: Eto.macOS.dll NOT found in arm64 build"
-          exit 1
-        fi
-        if [ -f "publish-arm64/Microsoft.macOS.dll" ]; then
-          echo "✓ Microsoft.macOS.dll found in arm64 build (required by Eto.macOS.dll)"
-        else
-          echo "✗ ERROR: Microsoft.macOS.dll NOT found in arm64 build - Eto.macOS.dll will fail at runtime!"
-          exit 1
-        fi
-        if [ -f "publish-arm64/Eto.Gtk.dll" ]; then
-          echo "✗ ERROR: Eto.Gtk.dll should NOT be in arm64 build (UseGtk=false)"
+        echo "=== Checking arm64 .app bundle ==="
+        for f in Eto.macOS.dll Microsoft.macOS.dll; do
+          if [ -f "$ARM64_APP/Contents/MonoBundle/$f" ]; then
+            echo "✓ $f found in arm64 build"
+          else
+            echo "✗ ERROR: $f NOT found in arm64 build"
+            exit 1
+          fi
+        done
+        if [ -f "$ARM64_APP/Contents/MonoBundle/Eto.Gtk.dll" ]; then
+          echo "✗ ERROR: Eto.Gtk.dll should NOT be in arm64 build"
           exit 1
         else
           echo "✓ Eto.Gtk.dll correctly excluded from arm64 build"
         fi
 
-        echo "=== Listing all DLLs in arm64 build ==="
-        ls publish-arm64/*.dll | head -20
+        echo "=== Checking x64 .app bundle ==="
+        for f in Eto.macOS.dll Microsoft.macOS.dll; do
+          if [ -f "$X64_APP/Contents/MonoBundle/$f" ]; then
+            echo "✓ $f found in x64 build"
+          else
+            echo "✗ ERROR: $f NOT found in x64 build"
+            exit 1
+          fi
+        done
+
+        echo "=== Native executables ==="
+        file "$ARM64_APP/Contents/MacOS/L1MapViewerCore"
+        file "$X64_APP/Contents/MacOS/L1MapViewerCore"
 
     - name: Create macOS App Bundle and Universal Binary DMG
       run: |
         APP_NAME="${{ env.PROJECT_NAME }}.app"
-        EXECUTABLE_NAME="L1MapViewerCore"
+        ARM64_APP="bin/Release/net10.0-macos/osx-arm64/L1MapViewerCore.app"
+        X64_APP="bin/Release/net10.0-macos/osx-x64/L1MapViewerCore.app"
 
-        # 建立 app bundle 結構
-        mkdir -p "universal/$APP_NAME/Contents/MacOS"
-        mkdir -p "universal/$APP_NAME/Contents/Resources"
+        # 使用 SDK 產生的 arm64 .app bundle 作為基底
+        mkdir -p universal
+        cp -R "$ARM64_APP" "universal/$APP_NAME"
 
-        # 建立 Info.plist
-        cat > "universal/$APP_NAME/Contents/Info.plist" << 'PLIST'
-        <?xml version="1.0" encoding="UTF-8"?>
-        <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-        <plist version="1.0">
-        <dict>
-            <key>CFBundleDevelopmentRegion</key>
-            <string>en</string>
-            <key>CFBundleExecutable</key>
-            <string>L1MapViewerCore</string>
-            <key>CFBundleIdentifier</key>
-            <string>com.flyworld.l1mapviewer</string>
-            <key>CFBundleInfoDictionaryVersion</key>
-            <string>6.0</string>
-            <key>CFBundleName</key>
-            <string>L1MapViewer</string>
-            <key>CFBundlePackageType</key>
-            <string>APPL</string>
-            <key>CFBundleShortVersionString</key>
-            <string>1.0</string>
-            <key>CFBundleVersion</key>
-            <string>1.0</string>
-            <key>LSMinimumSystemVersion</key>
-            <string>10.15</string>
-            <key>NSHighResolutionCapable</key>
-            <true/>
-            <key>NSPrincipalClass</key>
-            <string>NSApplication</string>
-        </dict>
-        </plist>
-        PLIST
+        # 更新 bundle 名稱
+        /usr/libexec/PlistBuddy -c "Set :CFBundleName L1MapViewer" "universal/$APP_NAME/Contents/Info.plist" || true
 
-        # 複製 arm64 版本的檔案到 app bundle
-        cp -R publish-arm64/* "universal/$APP_NAME/Contents/MacOS/"
-
-        # 使用 lipo 合併所有 Mach-O 檔案 (執行檔和 dylib)
-        MACOS_DIR="universal/$APP_NAME/Contents/MacOS"
-        for file in "$MACOS_DIR"/*; do
-          filename=$(basename "$file")
-          x64_file="publish-x64/$filename"
+        # 使用 lipo 合併 Contents/MacOS/ 中的 Mach-O 檔案
+        for file in "universal/$APP_NAME/Contents/MacOS/"*; do
+          fname=$(basename "$file")
+          x64_file="$X64_APP/Contents/MacOS/$fname"
           if [ -f "$x64_file" ] && file "$file" | grep -q "Mach-O"; then
-            echo "Creating universal binary for $filename"
-            lipo -create "$file" "$x64_file" -output "$MACOS_DIR/$filename.universal" 2>/dev/null || true
-            if [ -f "$MACOS_DIR/$filename.universal" ]; then
-              mv "$MACOS_DIR/$filename.universal" "$MACOS_DIR/$filename"
-            fi
+            echo "Creating universal binary for MacOS/$fname"
+            lipo -create "$file" "$x64_file" -output "$file.universal" 2>/dev/null && mv "$file.universal" "$file"
           fi
         done
 
-        # Ad-hoc 簽署
+        # 使用 lipo 合併 Contents/MonoBundle/ 中的 Mach-O 檔案 (dylib)
+        for file in "universal/$APP_NAME/Contents/MonoBundle/"*; do
+          fname=$(basename "$file")
+          x64_file="$X64_APP/Contents/MonoBundle/$fname"
+          if [ -f "$x64_file" ] && file "$file" | grep -q "Mach-O"; then
+            echo "Creating universal binary for MonoBundle/$fname"
+            lipo -create "$file" "$x64_file" -output "$file.universal" 2>/dev/null && mv "$file.universal" "$file"
+          fi
+        done
+
+        # Ad-hoc 簽署（先簽 dylib，再簽整個 app）
+        for dylib in "universal/$APP_NAME/Contents/MonoBundle/"*.dylib; do
+          codesign --force --sign - "$dylib" 2>/dev/null || true
+        done
         codesign --force --deep --sign - "universal/$APP_NAME" || true
 
         # 建立 DMG

@@ -108,6 +108,9 @@ static class Program
                 {
                     // Fall back to GTK on macOS (requires GTK installed via Homebrew: brew install gtk+3)
                     Console.WriteLine($"Note: Native macOS platform failed ({ex.GetType().Name}). Trying GTK backend...");
+                    Console.WriteLine($"  Detail: {ex.Message}");
+                    if (ex.InnerException != null)
+                        Console.WriteLine($"  Inner: {ex.InnerException}");
                     Console.WriteLine("For native look, install: sudo dotnet workload install macos");
                     Console.WriteLine("For GTK backend, install: brew install gtk+3");
 

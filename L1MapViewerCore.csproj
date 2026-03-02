@@ -1,10 +1,11 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <OutputType>WinExe</OutputType>
+        <OutputType Condition="$([MSBuild]::IsOSPlatform('Windows'))">WinExe</OutputType>
+        <OutputType Condition="!$([MSBuild]::IsOSPlatform('Windows'))">Exe</OutputType>
         <!-- Use Windows TFM on Windows for WPF support, macOS TFM for native macOS builds, plain net10.0 otherwise -->
         <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows</TargetFramework>
-        <!-- macOS native build (UseGtk=false): use net10.0-macos to include Microsoft.macOS bindings required by Eto.macOS.dll -->
+        <!-- macOS native build (UseGtk=false): use net10.0-macos to compile Objective-C bridge into executable -->
         <TargetFramework Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">net10.0-macos</TargetFramework>
         <!-- macOS GTK build (UseGtk=true, default) or Linux: use plain net10.0 -->
         <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Linux')) OR ($([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' == 'true')">net10.0</TargetFramework>
@@ -27,6 +28,9 @@
         <ApplicationIcon>icon.ico</ApplicationIcon>
         <!-- 抑制部分 nullable 和過時 API 警告 -->
         <NoWarn>CS8600;CS8601;CS8602;CS8603;CS8604;CS8605;CS8618;CS8619;CS8622;CS8625;CS0162;CS0168;CS0169;CS0219;CS0414;CA2022;SYSLIB0021</NoWarn>
+
+        <!-- macOS bundle identifier (required by net10.0-macos TFM) -->
+        <ApplicationId Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">com.flyworld.l1mapviewer</ApplicationId>
 
         <!-- 公司與產品資訊 -->
         <Company>flyworld</Company>
