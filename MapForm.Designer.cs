@@ -1773,7 +1773,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCopy.SetLocation(new Point(2, 5));
             this.btnToolCopy.SetName("btnToolCopy");
-            this.btnToolCopy.Size = new Size(34, 34);
+            this.btnToolCopy.Size = new Size(60, 30);
             this.btnToolCopy.TabIndex = 0;
             this.btnToolCopy.Text = "複製";
             this.btnToolCopy.SetUseVisualStyleBackColor(true);
@@ -1785,7 +1785,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolPaste.SetLocation(new Point(2, 44));
             this.btnToolPaste.SetName("btnToolPaste");
-            this.btnToolPaste.Size = new Size(34, 34);
+            this.btnToolPaste.Size = new Size(60, 30);
             this.btnToolPaste.TabIndex = 1;
             this.btnToolPaste.Text = "貼上";
             this.btnToolPaste.SetUseVisualStyleBackColor(true);
@@ -1797,7 +1797,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolDelete.SetLocation(new Point(2, 83));
             this.btnToolDelete.SetName("btnToolDelete");
-            this.btnToolDelete.Size = new Size(34, 34);
+            this.btnToolDelete.Size = new Size(60, 30);
             this.btnToolDelete.TabIndex = 2;
             this.btnToolDelete.Text = "刪除";
             this.btnToolDelete.SetUseVisualStyleBackColor(true);
@@ -1809,7 +1809,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolUndo.SetLocation(new Point(2, 132));
             this.btnToolUndo.SetName("btnToolUndo");
-            this.btnToolUndo.Size = new Size(34, 34);
+            this.btnToolUndo.Size = new Size(60, 30);
             this.btnToolUndo.TabIndex = 3;
             this.btnToolUndo.Text = "復原";
             this.btnToolUndo.SetUseVisualStyleBackColor(true);
@@ -1821,7 +1821,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolRedo.SetLocation(new Point(2, 171));
             this.btnToolRedo.SetName("btnToolRedo");
-            this.btnToolRedo.Size = new Size(34, 34);
+            this.btnToolRedo.Size = new Size(60, 30);
             this.btnToolRedo.TabIndex = 4;
             this.btnToolRedo.Text = "重做";
             this.btnToolRedo.SetUseVisualStyleBackColor(true);
@@ -1833,7 +1833,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolSave.SetLocation(new Point(2, 220));
             this.btnToolSave.SetName("btnToolSave");
-            this.btnToolSave.Size = new Size(34, 34);
+            this.btnToolSave.Size = new Size(60, 30);
             this.btnToolSave.TabIndex = 5;
             this.btnToolSave.Text = "儲存";
             this.btnToolSave.SetUseVisualStyleBackColor(true);
@@ -1845,7 +1845,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCellInfo.SetLocation(new Point(2, 269));
             this.btnToolCellInfo.SetName("btnToolCellInfo");
-            this.btnToolCellInfo.Size = new Size(34, 34);
+            this.btnToolCellInfo.Size = new Size(60, 30);
             this.btnToolCellInfo.TabIndex = 6;
             this.btnToolCellInfo.Text = "詳細";
             this.btnToolCellInfo.SetUseVisualStyleBackColor(true);
@@ -1857,7 +1857,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolReplaceTile.SetLocation(new Point(2, 318));
             this.btnToolReplaceTile.SetName("btnToolReplaceTile");
-            this.btnToolReplaceTile.Size = new Size(34, 34);
+            this.btnToolReplaceTile.Size = new Size(60, 30);
             this.btnToolReplaceTile.TabIndex = 7;
             this.btnToolReplaceTile.Text = "替換";
             this.btnToolReplaceTile.SetUseVisualStyleBackColor(true);
@@ -1869,7 +1869,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolAddS32.SetLocation(new Point(2, 367));
             this.btnToolAddS32.SetName("btnToolAddS32");
-            this.btnToolAddS32.Size = new Size(34, 34);
+            this.btnToolAddS32.Size = new Size(60, 30);
             this.btnToolAddS32.TabIndex = 8;
             this.btnToolAddS32.Text = "新增";
             this.btnToolAddS32.SetUseVisualStyleBackColor(true);
@@ -1881,7 +1881,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolClearLayer7.SetLocation(new Point(2, 405));
             this.btnToolClearLayer7.SetName("btnToolClearLayer7");
-            this.btnToolClearLayer7.Size = new Size(34, 34);
+            this.btnToolClearLayer7.Size = new Size(60, 30);
             this.btnToolClearLayer7.TabIndex = 9;
             this.btnToolClearLayer7.Text = "清L7";
             this.btnToolClearLayer7.SetUseVisualStyleBackColor(true);
@@ -1893,7 +1893,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolClearCell.SetLocation(new Point(2, 443));
             this.btnToolClearCell.SetName("btnToolClearCell");
-            this.btnToolClearCell.Size = new Size(34, 34);
+            this.btnToolClearCell.Size = new Size(60, 30);
             this.btnToolClearCell.TabIndex = 10;
             this.btnToolClearCell.Text = "清格";
             this.btnToolClearCell.SetUseVisualStyleBackColor(true);
@@ -1905,7 +1905,7 @@ namespace L1FlyMapViewer
             //
             this.btnMapValidate.SetLocation(new Point(2, 481));
             this.btnMapValidate.SetName("btnMapValidate");
-            this.btnMapValidate.Size = new Size(34, 34);
+            this.btnMapValidate.Size = new Size(60, 30);
             this.btnMapValidate.TabIndex = 13;
             this.btnMapValidate.Text = "⚠";
             this.btnMapValidate.TextColor = Colors.Red;
@@ -1920,7 +1920,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL1.SetLocation(new Point(2, 2));
             this.btnToolCheckL1.SetName("btnToolCheckL1");
-            this.btnToolCheckL1.Size = new Size(34, 34);
+            this.btnToolCheckL1.Size = new Size(60, 30);
             this.btnToolCheckL1.TabIndex = 11;
             this.btnToolCheckL1.Text = "查L1";
             this.btnToolCheckL1.SetUseVisualStyleBackColor(true);
@@ -1932,7 +1932,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL2.SetLocation(new Point(2, 40));
             this.btnToolCheckL2.SetName("btnToolCheckL2");
-            this.btnToolCheckL2.Size = new Size(34, 34);
+            this.btnToolCheckL2.Size = new Size(60, 30);
             this.btnToolCheckL2.TabIndex = 11;
             this.btnToolCheckL2.Text = "查L2";
             this.btnToolCheckL2.SetUseVisualStyleBackColor(true);
@@ -1944,7 +1944,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL3.SetLocation(new Point(2, 78));
             this.btnToolCheckL3.SetName("btnToolCheckL3");
-            this.btnToolCheckL3.Size = new Size(34, 34);
+            this.btnToolCheckL3.Size = new Size(60, 30);
             this.btnToolCheckL3.TabIndex = 19;
             this.btnToolCheckL3.Text = "查L3";
             this.btnToolCheckL3.SetUseVisualStyleBackColor(true);
@@ -1956,7 +1956,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL4.SetLocation(new Point(2, 116));
             this.btnToolCheckL4.SetName("btnToolCheckL4");
-            this.btnToolCheckL4.Size = new Size(34, 34);
+            this.btnToolCheckL4.Size = new Size(60, 30);
             this.btnToolCheckL4.TabIndex = 11;
             this.btnToolCheckL4.Text = "查L4";
             this.btnToolCheckL4.SetUseVisualStyleBackColor(true);
@@ -1968,7 +1968,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL5.SetLocation(new Point(2, 154));
             this.btnToolCheckL5.SetName("btnToolCheckL5");
-            this.btnToolCheckL5.Size = new Size(34, 34);
+            this.btnToolCheckL5.Size = new Size(60, 30);
             this.btnToolCheckL5.TabIndex = 11;
             this.btnToolCheckL5.Text = "查L5";
             this.btnToolCheckL5.SetUseVisualStyleBackColor(true);
@@ -1980,7 +1980,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL6.SetLocation(new Point(2, 192));
             this.btnToolCheckL6.SetName("btnToolCheckL6");
-            this.btnToolCheckL6.Size = new Size(34, 34);
+            this.btnToolCheckL6.Size = new Size(60, 30);
             this.btnToolCheckL6.TabIndex = 12;
             this.btnToolCheckL6.Text = "查L6";
             this.btnToolCheckL6.SetUseVisualStyleBackColor(true);
@@ -1992,7 +1992,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL7.SetLocation(new Point(2, 230));
             this.btnToolCheckL7.SetName("btnToolCheckL7");
-            this.btnToolCheckL7.Size = new Size(34, 34);
+            this.btnToolCheckL7.Size = new Size(60, 30);
             this.btnToolCheckL7.TabIndex = 13;
             this.btnToolCheckL7.Text = "查L7";
             this.btnToolCheckL7.SetUseVisualStyleBackColor(true);
@@ -2004,7 +2004,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolCheckL8.SetLocation(new Point(2, 268));
             this.btnToolCheckL8.SetName("btnToolCheckL8");
-            this.btnToolCheckL8.Size = new Size(34, 34);
+            this.btnToolCheckL8.Size = new Size(60, 30);
             this.btnToolCheckL8.TabIndex = 14;
             this.btnToolCheckL8.Text = "查L8";
             this.btnToolCheckL8.SetUseVisualStyleBackColor(true);
@@ -2016,7 +2016,7 @@ namespace L1FlyMapViewer
             //
             this.btnEnableVisibleL8.SetLocation(new Point(2, 304));
             this.btnEnableVisibleL8.SetName("btnEnableVisibleL8");
-            this.btnEnableVisibleL8.Size = new Size(34, 34);
+            this.btnEnableVisibleL8.Size = new Size(60, 30);
             this.btnEnableVisibleL8.TabIndex = 15;
             this.btnEnableVisibleL8.Text = "啟L8";
             this.btnEnableVisibleL8.SetUseVisualStyleBackColor(true);
@@ -2028,7 +2028,7 @@ namespace L1FlyMapViewer
             //
             this.btnViewClipboard.SetLocation(new Point(2, 340));
             this.btnViewClipboard.SetName("btnViewClipboard");
-            this.btnViewClipboard.Size = new Size(34, 34);
+            this.btnViewClipboard.Size = new Size(60, 30);
             this.btnViewClipboard.TabIndex = 16;
             this.btnViewClipboard.Text = "剪貼";
             this.btnViewClipboard.SetUseVisualStyleBackColor(true);
@@ -2040,7 +2040,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolTestTil.SetLocation(new Point(2, 378));
             this.btnToolTestTil.SetName("btnToolTestTil");
-            this.btnToolTestTil.Size = new Size(34, 34);
+            this.btnToolTestTil.Size = new Size(60, 30);
             this.btnToolTestTil.TabIndex = 17;
             this.btnToolTestTil.Text = "測til";
             this.btnToolTestTil.SetUseVisualStyleBackColor(true);
@@ -2052,7 +2052,7 @@ namespace L1FlyMapViewer
             //
             this.btnToolClearTestTil.SetLocation(new Point(2, 416));
             this.btnToolClearTestTil.SetName("btnToolClearTestTil");
-            this.btnToolClearTestTil.Size = new Size(34, 34);
+            this.btnToolClearTestTil.Size = new Size(60, 30);
             this.btnToolClearTestTil.TabIndex = 18;
             this.btnToolClearTestTil.Text = "清til";
             this.btnToolClearTestTil.SetUseVisualStyleBackColor(true);

@@ -488,7 +488,7 @@ namespace L1MapViewer.Controls
             _zoomControlPanel = new Panel
             {
                 Size = new Size(48, 118),
-                BackColor = Colors.Transparent,
+                BackColor = Color.FromArgb(180, 240, 240, 240),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Left,
             };
 
@@ -563,12 +563,12 @@ namespace L1MapViewer.Controls
             var btn = new Button
             {
                 Text = text,
-                Font = FontHelper.CreateUIFont(10, FontStyle.Bold),
+                Font = FontHelper.CreateUIFont(12, FontStyle.Bold),
                 Size = new Size(48, 38),
                 Location = new Point(0, top),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Colors.White,
-                ForeColor = Color.FromArgb(102, 102, 102),
+                BackColor = Color.FromArgb(230, 230, 230),
+                ForeColor = Color.FromArgb(40, 40, 40),
                 Cursor = Cursors.Hand,
             };
             return btn;
@@ -594,7 +594,7 @@ namespace L1MapViewer.Controls
             _navControlPanel = new Panel
             {
                 Size = new Size(panelWidth, panelHeight),
-                BackColor = Colors.Transparent,
+                BackColor = Color.FromArgb(180, 240, 240, 240),
                 Anchor = AnchorStyles.Bottom | AnchorStyles.Right,
             };
 
@@ -644,12 +644,12 @@ namespace L1MapViewer.Controls
             var btn = new Button
             {
                 Text = text,
-                Font = FontHelper.CreateUIFont(12, FontStyle.Bold),
+                Font = FontHelper.CreateUIFont(14, FontStyle.Bold),
                 Size = new Size(size, size),
                 Location = new Point(left, top),
                 FlatStyle = FlatStyle.Flat,
-                BackColor = Color.FromArgb(240, 255, 255, 255),
-                ForeColor = Color.FromArgb(102, 102, 102),
+                BackColor = Color.FromArgb(230, 230, 230),
+                ForeColor = Color.FromArgb(40, 40, 40),
                 Cursor = Cursors.Hand,
             };
             return btn;

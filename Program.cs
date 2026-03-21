@@ -77,11 +77,23 @@ static class Program
         LogPerf("[PROGRAM] Localization initialized: " + LocalizationManager.CurrentLanguage);
 
         // 初始化 Eto.Forms 平台
-        LogPerf("[PROGRAM] Initializing Eto.Forms platform...");
+        DebugLog.Log("[PROGRAM] Initializing Eto.Forms platform...");
         Platform platform;
         try
         {
+#if MACOS_NATIVE
+            // net10.0-macos build: force native macOS platform to avoid Platform.Detect picking GTK
+            DebugLog.Log("[PROGRAM] Using MACOS_NATIVE path");
+            var basePath = AppContext.BaseDirectory;
+            DebugLog.Log($"[PROGRAM] BaseDirectory: {basePath}");
+            var assemblyPath = Path.Combine(basePath, "Eto.macOS.dll");
+            DebugLog.Log($"[PROGRAM] Loading: {assemblyPath} (exists: {File.Exists(assemblyPath)})");
+            var macPlatformAssembly = System.Reflection.Assembly.LoadFrom(assemblyPath);
+            var platformType = macPlatformAssembly.GetType("Eto.Mac.Platform");
+            platform = (Platform)Activator.CreateInstance(platformType!)!;
+#else
             platform = Platform.Detect;
+#endif
         }
         catch (InvalidOperationException)
         {
@@ -157,6 +169,12 @@ static class Program
 
         using var app = new Application(platform);
         LogPerf("[PROGRAM] Eto Application created");
+
+#if MACOS_NATIVE
+        // Force light mode — app uses hardcoded Windows light-theme colors
+        AppKit.NSApplication.SharedApplication.Appearance =
+            AppKit.NSAppearance.GetAppearance(AppKit.NSAppearance.NameAqua);
+#endif
 
         // 預先初始化 Eto 樣式系統，避免在並行環境中發生競爭條件
         // Eto.Forms 的 DefaultStyleProvider 不是線程安全的，需要在主執行緒先初始化

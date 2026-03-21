@@ -879,8 +879,8 @@ namespace L1FlyMapViewer
             {
                 Orientation = Eto.Forms.Orientation.Horizontal,
                 FixedPanel = Eto.Forms.SplitterFixedPanel.Panel1,
-                Panel1MinimumSize = 80,
-                Position = 85,
+                Panel1MinimumSize = 130,
+                Position = 140,
                 Panel1 = toolBtnLayout,
                 Panel2 = tileListLayout
             };

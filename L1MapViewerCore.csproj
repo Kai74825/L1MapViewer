@@ -3,6 +3,8 @@
     <PropertyGroup>
         <OutputType Condition="$([MSBuild]::IsOSPlatform('Windows'))">WinExe</OutputType>
         <OutputType Condition="!$([MSBuild]::IsOSPlatform('Windows'))">Exe</OutputType>
+        <!-- Set UseGtk default BEFORE TargetFramework conditions that depend on it -->
+        <UseGtk Condition="'$(UseGtk)' == ''">false</UseGtk>
         <!-- Use Windows TFM on Windows for WPF support, macOS TFM for native macOS builds, plain net10.0 otherwise -->
         <TargetFramework Condition="$([MSBuild]::IsOSPlatform('Windows'))">net10.0-windows</TargetFramework>
         <!-- macOS native build (UseGtk=false): use net10.0-macos to compile Objective-C bridge into executable -->
@@ -12,6 +14,7 @@
         <UseWPF Condition="$([MSBuild]::IsOSPlatform('Windows'))">true</UseWPF>
         <!-- Define WINDOWS for conditional compilation -->
         <DefineConstants Condition="$([MSBuild]::IsOSPlatform('Windows'))">$(DefineConstants);WINDOWS</DefineConstants>
+        <DefineConstants Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">$(DefineConstants);MACOS_NATIVE</DefineConstants>
         <!-- Define SKIA_LEGACY for Win7 build with SkiaSharp 2.88 -->
         <DefineConstants Condition="'$(SkiaLegacy)' == 'true'">$(DefineConstants);SKIA_LEGACY</DefineConstants>
         <!-- Allow running on newer .NET versions if net8.0 runtime isn't available -->
@@ -20,8 +23,7 @@
         <RuntimeIdentifiers Condition="$([MSBuild]::IsOSPlatform('OSX'))">osx-x64;osx-arm64</RuntimeIdentifiers>
         <!-- Use workloads when available, otherwise fall back to manual reference -->
         <UseWorkloads Condition="'$(UseWorkloads)' == ''">false</UseWorkloads>
-        <!-- Set UseGtk=false to exclude GTK and use native macOS platform only -->
-        <UseGtk Condition="'$(UseGtk)' == ''">true</UseGtk>
+        <!-- Set UseGtk=true to use GTK instead of native macOS platform -->
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -106,6 +108,38 @@
     <!-- Fix .NET 10 macOS workload bug: MonoBundleExecutable in Info.plist says .exe but actual file is .dll -->
     <Target Name="FixMonoBundleExecutable" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">
       <Exec Command="/usr/libexec/PlistBuddy -c 'Set :MonoBundleExecutable L1MapViewerCore.dll' '$(PublishDir)../L1MapViewerCore.app/Contents/Info.plist'" IgnoreExitCode="true" />
+    </Target>
+
+    <!--
+      macOS native build post-build fixes:
+      1. MonoBundleExecutable workload bug (.exe → .dll)
+      2. SkiaSharp single-arch slice → universal binary
+      3. Re-sign all dylibs + bundle with JIT entitlements
+      Runs after the macOS workload finishes creating the app bundle.
+      Windows/Linux builds are not affected (Condition guards).
+    -->
+    <Target Name="FixMacOSNativeBuild" AfterTargets="_CreateMergedAppBundle;Build" Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">
+      <PropertyGroup>
+        <_AppBundle>$(OutputPath)/L1MapViewerCore.app</_AppBundle>
+        <_MonoBundle>$(_AppBundle)/Contents/MonoBundle</_MonoBundle>
+        <_InfoPlist>$(_AppBundle)/Contents/Info.plist</_InfoPlist>
+        <_SkiaUniversal>$(NuGetPackageRoot)skiasharp.nativeassets.macos/3.119.1/runtimes/osx/native/libSkiaSharp.dylib</_SkiaUniversal>
+        <_Entitlements>$(MSBuildProjectDirectory)/macOS/entitlements.plist</_Entitlements>
+      </PropertyGroup>
+
+      <!-- 1. Fix MonoBundleExecutable (.exe → .dll) -->
+      <Message Text="[FixMacOS] Fixing Info.plist at $(_InfoPlist)" Importance="high" />
+      <Exec Command="/usr/libexec/PlistBuddy -c 'Set :MonoBundleExecutable L1MapViewerCore.dll' '$(_InfoPlist)'" Condition="Exists('$(_InfoPlist)')" />
+
+      <!-- 2. Replace SkiaSharp with universal binary (build extracts single-arch slice) -->
+      <Copy SourceFiles="$(_SkiaUniversal)" DestinationFiles="$(_MonoBundle)/libSkiaSharp.dylib" OverwriteReadOnlyFiles="true" Condition="Exists('$(_SkiaUniversal)') AND Exists('$(_MonoBundle)')" />
+      <Message Text="[FixMacOS] Replaced libSkiaSharp.dylib with universal binary" Importance="high" Condition="Exists('$(_SkiaUniversal)')" />
+
+      <!-- 3. Re-sign all dylibs then executable then bundle -->
+      <Exec Command="find '$(_MonoBundle)' -name '*.dylib' -exec codesign --force -s - {} \%3B" Condition="Exists('$(_MonoBundle)')" />
+      <Exec Command="codesign --force -s - --entitlements '$(_Entitlements)' '$(_AppBundle)/Contents/MacOS/L1MapViewerCore'" Condition="Exists('$(_AppBundle)/Contents/MacOS/L1MapViewerCore') AND Exists('$(_Entitlements)')" />
+      <Exec Command="codesign --force -s - --entitlements '$(_Entitlements)' '$(_AppBundle)'" Condition="Exists('$(_AppBundle)') AND Exists('$(_Entitlements)')" />
+      <Message Text="[FixMacOS] Re-signed macOS app bundle with JIT entitlements" Importance="high" />
     </Target>
 
     <!-- Also copy during Publish for self-contained deployments -->

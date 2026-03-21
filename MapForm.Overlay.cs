@@ -15,6 +15,24 @@ namespace L1FlyMapViewer
     {
         // Logger for overlay (MapForm 主檔案已有 _logger)
 
+        /// <summary>
+        /// 取得跨平台支援中文的 SKTypeface。
+        /// macOS 用 PingFang TC，Windows 用 Microsoft JhengHei，都沒有就用系統預設。
+        /// </summary>
+        private static SKTypeface GetCjkTypeface(SKFontStyle style = null)
+        {
+            style ??= SKFontStyle.Normal;
+            string[] families = { "Microsoft JhengHei", "PingFang TC", "Heiti TC" };
+            foreach (var family in families)
+            {
+                var tf = SKTypeface.FromFamilyName(family, style);
+                // 檢查是否真的找到了這個字型（SkiaSharp 找不到時會回傳預設字型）
+                if (tf != null && string.Equals(tf.FamilyName, family, StringComparison.OrdinalIgnoreCase))
+                    return tf;
+            }
+            return SKTypeface.Default;
+        }
+
         #region SkiaSharp Overlay 繪製函數
 
         // 輔助函數：取得屬性對應的 SKColor
@@ -372,7 +390,7 @@ namespace L1FlyMapViewer
                 IsAntialias = true,
                 TextSize = 10,
                 Color = SKColors.Blue,
-                Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold)
+                Typeface = GetCjkTypeface(SKFontStyle.Bold)
             };
             using var bgPaint = new SKPaint
             {
@@ -437,7 +455,7 @@ namespace L1FlyMapViewer
                 IsAntialias = true,
                 TextSize = 10,
                 Color = SKColors.Lime,
-                Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold)
+                Typeface = GetCjkTypeface(SKFontStyle.Bold)
             };
             using var bgPaint = new SKPaint
             {
@@ -869,7 +887,7 @@ namespace L1FlyMapViewer
                 IsAntialias = true,
                 TextSize = fontSize,
                 Color = textColor,
-                Typeface = SKTypeface.FromFamilyName("Microsoft JhengHei", SKFontStyle.Normal)
+                Typeface = GetCjkTypeface(SKFontStyle.Normal)
             };
 
             // 計算文字區域大小
@@ -1016,7 +1034,7 @@ namespace L1FlyMapViewer
                             IsAntialias = true,
                             TextSize = textSize,
                             Color = SKColors.White,
-                            Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold)
+                            Typeface = GetCjkTypeface(SKFontStyle.Bold)
                         };
                         canvas.DrawText(item.SprId.ToString(), markerX + markerRadius + 2, markerY + textSize / 3, textPaint);
                     }
@@ -1171,7 +1189,7 @@ namespace L1FlyMapViewer
                     IsAntialias = true,
                     TextSize = 12,
                     Color = SKColors.White,
-                    Typeface = SKTypeface.FromFamilyName("Arial", SKFontStyle.Bold)
+                    Typeface = GetCjkTypeface(SKFontStyle.Bold)
                 };
                 using var bgPaint = new SKPaint
                 {
