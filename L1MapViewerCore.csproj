@@ -107,7 +107,7 @@
 
     <!-- Fix .NET 10 macOS workload bug: MonoBundleExecutable in Info.plist says .exe but actual file is .dll -->
     <Target Name="FixMonoBundleExecutable" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">
-      <Exec Command="/usr/libexec/PlistBuddy -c 'Set :MonoBundleExecutable L1MapViewerCore.dll' '$(PublishDir)../L1MapViewerCore.app/Contents/Info.plist'" IgnoreExitCode="true" />
+      <Exec Command="/usr/libexec/PlistBuddy -c 'Set :MonoBundleExecutable L1MapViewerCore.dll' '$(PublishDir)../L1MapViewerCore.app/Contents/Info.plist' || /usr/libexec/PlistBuddy -c 'Add :MonoBundleExecutable string L1MapViewerCore.dll' '$(PublishDir)../L1MapViewerCore.app/Contents/Info.plist'" IgnoreExitCode="true" />
     </Target>
 
     <!--
@@ -120,7 +120,7 @@
     -->
     <Target Name="FixMacOSNativeBuild" AfterTargets="_CreateMergedAppBundle;Build" Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">
       <PropertyGroup>
-        <_AppBundle>$(OutputPath)/L1MapViewerCore.app</_AppBundle>
+        <_AppBundle>$([System.IO.Path]::Combine('$(OutputPath)','L1MapViewerCore.app'))</_AppBundle>
         <_MonoBundle>$(_AppBundle)/Contents/MonoBundle</_MonoBundle>
         <_InfoPlist>$(_AppBundle)/Contents/Info.plist</_InfoPlist>
         <_SkiaUniversal>$(NuGetPackageRoot)skiasharp.nativeassets.macos/3.119.1/runtimes/osx/native/libSkiaSharp.dylib</_SkiaUniversal>
@@ -129,7 +129,7 @@
 
       <!-- 1. Fix MonoBundleExecutable (.exe → .dll) -->
       <Message Text="[FixMacOS] Fixing Info.plist at $(_InfoPlist)" Importance="high" />
-      <Exec Command="/usr/libexec/PlistBuddy -c 'Set :MonoBundleExecutable L1MapViewerCore.dll' '$(_InfoPlist)'" Condition="Exists('$(_InfoPlist)')" />
+      <Exec Command="/usr/libexec/PlistBuddy -c 'Set :MonoBundleExecutable L1MapViewerCore.dll' '$(_InfoPlist)' || /usr/libexec/PlistBuddy -c 'Add :MonoBundleExecutable string L1MapViewerCore.dll' '$(_InfoPlist)'" Condition="Exists('$(_InfoPlist)')" />
 
       <!-- 2. Replace SkiaSharp with universal binary (build extracts single-arch slice) -->
       <Copy SourceFiles="$(_SkiaUniversal)" DestinationFiles="$(_MonoBundle)/libSkiaSharp.dylib" OverwriteReadOnlyFiles="true" Condition="Exists('$(_SkiaUniversal)') AND Exists('$(_MonoBundle)')" />
