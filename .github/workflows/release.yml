@@ -226,14 +226,20 @@ jobs:
         dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false /p:ValidateXcodeVersion=false /p:MtouchLink=SdkOnly
     - name: Fix MonoBundleExecutable in Info.plist
       run: |
-        # .NET 10 macOS workload RC bug: MonoBundleExecutable says .exe but actual file is .dll
+        # Ensure MonoBundleExecutable points to the correct .dll in Info.plist.
+        # Workload 26.0 sets it to .exe (wrong), workload 26.2 omits it entirely.
         for app in bin/Release/net10.0-macos/osx-*/L1MapViewerCore.app; do
           PLIST="$app/Contents/Info.plist"
           CURRENT=$(/usr/libexec/PlistBuddy -c "Print :MonoBundleExecutable" "$PLIST" 2>/dev/null || echo "")
-          if [[ "$CURRENT" == *.exe ]]; then
+          if [[ -z "$CURRENT" ]]; then
+            /usr/libexec/PlistBuddy -c "Add :MonoBundleExecutable string L1MapViewerCore.dll" "$PLIST"
+            echo "Added MonoBundleExecutable: L1MapViewerCore.dll in $PLIST"
+          elif [[ "$CURRENT" == *.exe ]]; then
             FIXED="${CURRENT%.exe}.dll"
             /usr/libexec/PlistBuddy -c "Set :MonoBundleExecutable $FIXED" "$PLIST"
             echo "Fixed MonoBundleExecutable: $CURRENT -> $FIXED in $PLIST"
+          else
+            echo "MonoBundleExecutable already correct: $CURRENT in $PLIST"
           fi
         done
 
