@@ -103,6 +103,11 @@
       <Message Text="Copied Eto.Gtk.dll to $(OutputPath)" Importance="high" Condition="'$(UseGtk)' == 'true' AND Exists('$(EtoGtkSource)')" />
     </Target>
 
+    <!-- Fix .NET 10 macOS workload bug: MonoBundleExecutable in Info.plist says .exe but actual file is .dll -->
+    <Target Name="FixMonoBundleExecutable" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX')) AND '$(UseGtk)' != 'true'">
+      <Exec Command="/usr/libexec/PlistBuddy -c 'Set :MonoBundleExecutable L1MapViewerCore.dll' '$(PublishDir)../L1MapViewerCore.app/Contents/Info.plist'" IgnoreExitCode="true" />
+    </Target>
+
     <!-- Also copy during Publish for self-contained deployments -->
     <Target Name="CopyEtoPlatformAssembliesPublish" AfterTargets="Publish" Condition="$([MSBuild]::IsOSPlatform('OSX')) OR $([MSBuild]::IsOSPlatform('Linux'))">
       <PropertyGroup>

@@ -222,6 +222,19 @@ jobs:
       run: |
         dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false /p:ValidateXcodeVersion=false /p:MtouchLink=SdkOnly /p:Registrar=dynamic
 
+    - name: Fix MonoBundleExecutable in Info.plist
+      run: |
+        # .NET 10 macOS workload RC bug: MonoBundleExecutable says .exe but actual file is .dll
+        for app in bin/Release/net10.0-macos/osx-*/L1MapViewerCore.app; do
+          PLIST="$app/Contents/Info.plist"
+          CURRENT=$(/usr/libexec/PlistBuddy -c "Print :MonoBundleExecutable" "$PLIST" 2>/dev/null || echo "")
+          if [[ "$CURRENT" == *.exe ]]; then
+            FIXED="${CURRENT%.exe}.dll"
+            /usr/libexec/PlistBuddy -c "Set :MonoBundleExecutable $FIXED" "$PLIST"
+            echo "Fixed MonoBundleExecutable: $CURRENT -> $FIXED in $PLIST"
+          fi
+        done
+
     - name: Verify native macOS platform
       run: |
         ARM64_APP=bin/Release/net10.0-macos/osx-arm64/L1MapViewerCore.app
