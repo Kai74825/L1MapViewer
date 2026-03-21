@@ -152,7 +152,7 @@ jobs:
         path: ${{ env.PROJECT_NAME }}-${{ steps.get_version.outputs.TAG }}-linux-x64.zip
 
   build-macos:
-    runs-on: macos-latest
+    runs-on: macos-26
 
     steps:
     - name: Checkout
@@ -216,12 +216,10 @@ jobs:
         # 使用 net10.0-macos TFM 將 Objective-C bridge 編譯進執行檔 (fixes #4)
         # 關閉 R2R 讓 managed DLL 架構無關，以便建立 universal binary
         # CreatePackage=false 防止產生 .pkg，只保留平面檔案
-        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-x64 --self-contained true -o publish-x64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false /p:ValidateXcodeVersion=false /p:MtouchLink=SdkOnly /p:Registrar=dynamic
-
+        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-x64 --self-contained true -o publish-x64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false
     - name: Build arm64
       run: |
-        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false /p:ValidateXcodeVersion=false /p:MtouchLink=SdkOnly /p:Registrar=dynamic
-
+        dotnet publish ${{ env.CSPROJ_NAME }} -f net10.0-macos --configuration Release --runtime osx-arm64 --self-contained true -o publish-arm64-pkg /p:Version=${{ steps.get_version.outputs.DOTNET_VERSION }} /p:PublishReadyToRun=false /p:UseGtk=false /p:CreatePackage=false
     - name: Fix MonoBundleExecutable in Info.plist
       run: |
         # .NET 10 macOS workload RC bug: MonoBundleExecutable says .exe but actual file is .dll
