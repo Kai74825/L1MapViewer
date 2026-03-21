@@ -794,7 +794,7 @@ namespace L1FlyMapViewer
             var toolBtnCol1 = new Eto.Forms.StackLayout
             {
                 Orientation = Eto.Forms.Orientation.Vertical,
-                HorizontalContentAlignment = Eto.Forms.HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = Eto.Forms.HorizontalAlignment.Left,
                 Spacing = 2,
                 Padding = new Eto.Drawing.Padding(2)
             };
@@ -815,22 +815,33 @@ namespace L1FlyMapViewer
             var toolBtnCol2 = new Eto.Forms.StackLayout
             {
                 Orientation = Eto.Forms.Orientation.Vertical,
-                HorizontalContentAlignment = Eto.Forms.HorizontalAlignment.Stretch,
+                HorizontalContentAlignment = Eto.Forms.HorizontalAlignment.Left,
                 Spacing = 2,
                 Padding = new Eto.Drawing.Padding(2)
             };
-            toolBtnCol2.Items.Add(btnToolCheckL1);
-            toolBtnCol2.Items.Add(btnToolCheckL2);
-            toolBtnCol2.Items.Add(btnToolCheckL3);
-            toolBtnCol2.Items.Add(btnToolCheckL4);
-            toolBtnCol2.Items.Add(btnToolCheckL5);
-            toolBtnCol2.Items.Add(btnToolCheckL6);
-            toolBtnCol2.Items.Add(btnToolCheckL7);
-            toolBtnCol2.Items.Add(btnToolCheckL8);
-            toolBtnCol2.Items.Add(btnEnableVisibleL8);
-            toolBtnCol2.Items.Add(btnViewClipboard);
-            toolBtnCol2.Items.Add(btnToolTestTil);
-            toolBtnCol2.Items.Add(btnToolClearTestTil);
+            // Recreate COL2 buttons as fresh instances — Designer-created buttons have
+            // broken Click events on macOS native (NSButton target-action corruption).
+            var col2Buttons = new (string text, string tooltip, EventHandler handler)[]
+            {
+                ("查L1", "查看與編輯第一層（地板圖塊）資料", btnToolCheckL1_Click),
+                ("查L2", "查看與清除第二層資料", btnToolCheckL2_Click),
+                ("查L3", "查看第三層（屬性）資料", btnToolCheckL3_Click),
+                ("查L4", "查看與編輯第四層（物件）資料", btnToolCheckL4_Click),
+                ("查L5", "查看與管理第五層（透明圖塊）資料", btnToolCheckL5_Click),
+                ("查L6", "查看與管理第六層（使用的TileId）資料", btnToolCheckL6_Click),
+                ("查L7", "查看與編輯第七層（傳送點）資料", btnToolCheckL7_Click),
+                ("查L8", "查看哪些S32有第八層（特效）資料", btnToolCheckL8_Click),
+                ("啟L8", "啟用畫面中所有可見的 L8 特效", btnEnableVisibleL8_Click),
+                ("剪貼", "查看剪貼簿內容 (Ctrl+Shift+C)", btnViewClipboard_Click),
+                ("測til", "測試外部 til 檔案（暫時替換顯示）", btnToolTestTil_Click),
+                ("清til", "清除測 til（恢復正常顯示）", btnToolClearTestTil_Click),
+            };
+            foreach (var (text, tooltip, handler) in col2Buttons)
+            {
+                var btn = new Eto.Forms.Button { Text = text, Size = new Eto.Drawing.Size(60, 30), ToolTip = tooltip };
+                btn.Click += (s, e) => handler(s, e);
+                toolBtnCol2.Items.Add(btn);
+            }
 
             // 兩欄工具按鈕水平排列
             var toolBtnLayout = new Eto.Forms.StackLayout
@@ -879,8 +890,8 @@ namespace L1FlyMapViewer
             {
                 Orientation = Eto.Forms.Orientation.Horizontal,
                 FixedPanel = Eto.Forms.SplitterFixedPanel.Panel1,
-                Panel1MinimumSize = 130,
-                Position = 140,
+                Panel1MinimumSize = 170,
+                Position = 180,
                 Panel1 = toolBtnLayout,
                 Panel2 = tileListLayout
             };
@@ -1565,7 +1576,7 @@ namespace L1FlyMapViewer
                 ReadOnly = true,
                 Dock = DockStyle.Fill,
                 ScrollBars = ScrollBars.Vertical,
-                Font = new Font("Consolas", 10)
+                Font = new Font(FontHelper.MonoFontFamily, 10)
             };
 
             var sb = new System.Text.StringBuilder();
@@ -14251,7 +14262,7 @@ namespace L1FlyMapViewer
             s32Info.BackgroundColor = Color.FromArgb(60, 60, 60);
             s32Info.TextColor = Colors.White;
             s32Info.SetTextAlign(ContentAlignment.MiddleCenter);
-            s32Info.Font = new Font("Consolas", 10);
+            s32Info.Font = new Font(FontHelper.MonoFontFamily, 10);
             panel.GetControls().Add(s32Info);
 
             // 左右三角並排顯示
@@ -14287,7 +14298,7 @@ namespace L1FlyMapViewer
                 leftInfo.Size = new Size(370, 60);
                 leftInfo.BackgroundColor = Color.FromArgb(40, 40, 40);
                 leftInfo.TextColor = Colors.White;
-                leftInfo.Font = new Font("Consolas", 10);
+                leftInfo.Font = new Font(FontHelper.MonoFontFamily, 10);
                 leftInfo.SetTextAlign(ContentAlignment.MiddleCenter);
                 panel.GetControls().Add(leftInfo);
             }
@@ -14331,7 +14342,7 @@ namespace L1FlyMapViewer
                 rightInfo.Size = new Size(370, 60);
                 rightInfo.BackgroundColor = Color.FromArgb(40, 40, 40);
                 rightInfo.TextColor = Colors.White;
-                rightInfo.Font = new Font("Consolas", 10);
+                rightInfo.Font = new Font(FontHelper.MonoFontFamily, 10);
                 rightInfo.SetTextAlign(ContentAlignment.MiddleCenter);
                 panel.GetControls().Add(rightInfo);
             }
@@ -14404,7 +14415,7 @@ namespace L1FlyMapViewer
             headerLabel.BackgroundColor = Color.FromArgb(60, 60, 60);
             headerLabel.TextColor = Colors.White;
             headerLabel.SetTextAlign(ContentAlignment.MiddleCenter);
-            headerLabel.Font = new Font("Consolas", 10);
+            headerLabel.Font = new Font(FontHelper.MonoFontFamily, 10);
             panel.GetControls().Add(headerLabel);
 
             if (totalCount > 0)
@@ -14511,7 +14522,7 @@ namespace L1FlyMapViewer
             info.SetLocation(new Point(110, 5));
             info.Size = new Size(220, 100);
             info.TextColor = Colors.White;
-            info.Font = new Font("Consolas", 9);
+            info.Font = new Font(FontHelper.MonoFontFamily, 9);
             info.Text = $"TileId: {item.TileId} (0x{item.TileId:X4})\n" +
                        $"IndexId: {item.IndexId}\n" +
                        $"檔案: {item.TileId}.til\n" +
@@ -14700,7 +14711,7 @@ namespace L1FlyMapViewer
             headerLabel.BackgroundColor = Color.FromArgb(60, 60, 60);
             headerLabel.TextColor = Colors.White;
             headerLabel.SetTextAlign(ContentAlignment.MiddleCenter);
-            headerLabel.Font = new Font("Consolas", 10);
+            headerLabel.Font = new Font(FontHelper.MonoFontFamily, 10);
             panel.GetControls().Add(headerLabel);
 
             if (totalCount > 0)
@@ -14807,7 +14818,7 @@ namespace L1FlyMapViewer
             info.SetLocation(new Point(110, 5));
             info.Size = new Size(220, 100);
             info.TextColor = Colors.White;
-            info.Font = new Font("Consolas", 9);
+            info.Font = new Font(FontHelper.MonoFontFamily, 9);
             info.Text = $"TileId: {obj.TileId} (0x{obj.TileId:X4})\n" +
                        $"IndexId: {obj.IndexId}\n" +
                        $"檔案: {obj.TileId}.til\n" +
@@ -14995,7 +15006,7 @@ namespace L1FlyMapViewer
                     info.Text = $"L:{obj.Layer} G:{obj.GroupId}\nT:{obj.TileId} I:{obj.IndexId}";
                     info.SetDock(DockStyle.Top);
                     info.Height = 35;
-                    info.Font = new Font("Consolas", 8);
+                    info.Font = new Font(FontHelper.MonoFontFamily, 8);
                     info.SetTextAlign(ContentAlignment.MiddleCenter);
                     objPanel.GetControls().Add(info);
 
@@ -15457,7 +15468,7 @@ namespace L1FlyMapViewer
                 listView.View = View.Details;
                 listView.FullRowSelect = true;
                 listView.GridLines = true;
-                listView.Font = new Font("Consolas", 9, FontStyle.None);
+                listView.Font = new Font(FontHelper.MonoFontFamily, 9, FontStyle.None);
 
                 listView.Columns.Add("名稱", 80);
                 listView.Columns.Add("X", 30);
@@ -15550,7 +15561,7 @@ namespace L1FlyMapViewer
                 listView.View = View.Details;
                 listView.FullRowSelect = true;
                 listView.GridLines = true;
-                listView.Font = new Font("Consolas", 9, FontStyle.None);
+                listView.Font = new Font(FontHelper.MonoFontFamily, 9, FontStyle.None);
 
                 listView.Columns.Add("SprId", 70);
                 listView.Columns.Add("X", 50);
@@ -17132,7 +17143,7 @@ namespace L1FlyMapViewer
             TextBox txtInfo = new TextBox();
             txtInfo.Multiline = true;
             txtInfo.SetDock(DockStyle.Fill);
-            txtInfo.Font = new Font("Consolas", 9);
+            txtInfo.Font = new Font(FontHelper.MonoFontFamily, 9);
             txtInfo.ScrollBars = ScrollBars.Both;
             txtInfo.WordWrap = false;
 
@@ -20953,7 +20964,7 @@ namespace L1FlyMapViewer
                 Multiline = true,
                 ReadOnly = true,
                 ScrollBars = ScrollBars.Vertical,
-                Font = new Font("Consolas", 9),
+                Font = new Font(FontHelper.MonoFontFamily, 9),
                 Location = new Point(10, 20),
                 Size = new Size(460, 170),
                 Anchor = AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right,
@@ -23263,7 +23274,7 @@ namespace L1FlyMapViewer
             CheckedListBox clbItems = new CheckedListBox();
             clbItems.SetLocation(new Point(10, 35));
             clbItems.Size = new Size(710, 380);
-            clbItems.Font = new Font("Consolas", 9);
+            clbItems.Font = new Font(FontHelper.MonoFontFamily, 9);
             clbItems.CheckOnClick = true;
 
             List<(string filePath, int tileId)> itemInfoList = new List<(string, int)>();
@@ -23571,7 +23582,7 @@ namespace L1FlyMapViewer
                 using (Graphics g = GraphicsHelper.FromImage(placeholder))
                 {
                     g.Clear(Color.FromArgb(60, 60, 60));
-                    using (Font font = new Font("Consolas", 7))
+                    using (Font font = new Font(FontHelper.MonoFontFamily, 7))
                     {
                         string text = sprId.ToString();
                         var size = g.MeasureString(text, font);
@@ -23588,7 +23599,7 @@ namespace L1FlyMapViewer
             {
                 ListView lv = new ListView();
                 lv.SetDock(DockStyle.Fill);
-                lv.Font = new Font("Consolas", 9);
+                lv.Font = new Font(FontHelper.MonoFontFamily, 9);
                 lv.View = View.Details;
                 lv.FullRowSelect = true;
                 lv.MultiSelect = true;
@@ -24768,7 +24779,7 @@ namespace L1FlyMapViewer
             ListView lvStats = new ListView();
             lvStats.SetLocation(new Point(10, 20));
             lvStats.Size = new Size(690, 130);
-            lvStats.Font = new Font("Consolas", 9);
+            lvStats.Font = new Font(FontHelper.MonoFontFamily, 9);
             lvStats.View = View.Details;
             lvStats.FullRowSelect = true;
             lvStats.Columns.Add("TileId", 80);
@@ -25281,7 +25292,7 @@ namespace L1FlyMapViewer
             clbItems.SetLocation(new Point(10, 35));
             // 使用固定初始高度，Anchor 會在 Form 顯示後自動調整
             clbItems.Size = new Size(810, 370);
-            clbItems.Font = new Font("Consolas", 9);
+            clbItems.Font = new Font(FontHelper.MonoFontFamily, 9);
             clbItems.CheckOnClick = true;
             clbItems.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
@@ -25524,7 +25535,7 @@ namespace L1FlyMapViewer
             lvItems.View = View.Details;
             lvItems.FullRowSelect = true;
             lvItems.GridLines = true;
-            lvItems.Font = new Font("Consolas", 9);
+            lvItems.Font = new Font(FontHelper.MonoFontFamily, 9);
 
             lvItems.Columns.Add("S32", 100);
             lvItems.Columns.Add(LocalizationManager.L("Analyze_LocalX"), 55);
@@ -25697,7 +25708,7 @@ namespace L1FlyMapViewer
             ListView lvItems = new ListView();
             lvItems.SetLocation(new Point(10, 35));
             lvItems.Size = new Size(860, 380);
-            lvItems.Font = new Font("Consolas", 9);
+            lvItems.Font = new Font(FontHelper.MonoFontFamily, 9);
             lvItems.View = View.Details;
             lvItems.FullRowSelect = true;
             lvItems.CheckBoxes = true;
@@ -26163,7 +26174,7 @@ namespace L1FlyMapViewer
             lblSearchResult.TextColor = Colors.Blue;
 
             CheckedListBox clbItems = new CheckedListBox();
-            clbItems.Font = new Font("Consolas", 9);
+            clbItems.Font = new Font(FontHelper.MonoFontFamily, 9);
             clbItems.CheckOnClick = true;
 
             List<(string filePath, int itemIndex, Layer5Item item)> itemInfoList =
@@ -27296,7 +27307,7 @@ namespace L1FlyMapViewer
                 CheckedListBox clbL5Items = new CheckedListBox();
                 clbL5Items.SetLocation(new Point(5, 30));
                 clbL5Items.Size = new Size(tabContentWidth - 10, tabContentHeight - 110);
-                clbL5Items.Font = new Font("Consolas", 9);
+                clbL5Items.Font = new Font(FontHelper.MonoFontFamily, 9);
                 clbL5Items.CheckOnClick = true;
                 clbL5Items.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
@@ -27395,7 +27406,7 @@ namespace L1FlyMapViewer
                 CheckedListBox clbTileItems = new CheckedListBox();
                 clbTileItems.SetLocation(new Point(5, 30));
                 clbTileItems.Size = new Size(tabContentWidth - 10, tabContentHeight - 110);
-                clbTileItems.Font = new Font("Consolas", 9);
+                clbTileItems.Font = new Font(FontHelper.MonoFontFamily, 9);
                 clbTileItems.CheckOnClick = true;
                 clbTileItems.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
@@ -27523,7 +27534,7 @@ namespace L1FlyMapViewer
                 CheckedListBox clbL8Items = new CheckedListBox();
                 clbL8Items.SetLocation(new Point(5, 30));
                 clbL8Items.Size = new Size(tabContentWidth - 10, tabContentHeight - 110);
-                clbL8Items.Font = new Font("Consolas", 9);
+                clbL8Items.Font = new Font(FontHelper.MonoFontFamily, 9);
                 clbL8Items.CheckOnClick = true;
                 clbL8Items.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
@@ -27624,7 +27635,7 @@ namespace L1FlyMapViewer
                 ListBox lbOverLimitItems = new ListBox();
                 lbOverLimitItems.SetLocation(new Point(5, 50));
                 lbOverLimitItems.Size = new Size(tabContentWidth - 10, tabContentHeight - 130);
-                lbOverLimitItems.Font = new Font("Consolas", 9);
+                lbOverLimitItems.Font = new Font(FontHelper.MonoFontFamily, 9);
                 lbOverLimitItems.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
                 foreach (var tileId in overLimitTileIds)
@@ -27717,7 +27728,7 @@ namespace L1FlyMapViewer
                 CheckedListBox clbL5TypeItems = new CheckedListBox();
                 clbL5TypeItems.SetLocation(new Point(5, 50));
                 clbL5TypeItems.Size = new Size(tabContentWidth - 10, tabContentHeight - 130);
-                clbL5TypeItems.Font = new Font("Consolas", 9);
+                clbL5TypeItems.Font = new Font(FontHelper.MonoFontFamily, 9);
                 clbL5TypeItems.CheckOnClick = true;
                 clbL5TypeItems.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
@@ -27821,7 +27832,7 @@ namespace L1FlyMapViewer
                 ListBox lbCorruptedTiles = new ListBox();
                 lbCorruptedTiles.SetLocation(new Point(5, 50));
                 lbCorruptedTiles.Size = new Size(tabContentWidth - 10, tabContentHeight - 130);
-                lbCorruptedTiles.Font = new Font("Consolas", 9);
+                lbCorruptedTiles.Font = new Font(FontHelper.MonoFontFamily, 9);
                 lbCorruptedTiles.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
                 foreach (var tile in corruptedTiles)
@@ -27876,7 +27887,7 @@ namespace L1FlyMapViewer
                 CheckedListBox clbGroupIdItems = new CheckedListBox();
                 clbGroupIdItems.SetLocation(new Point(5, 55));
                 clbGroupIdItems.Size = new Size(tabContentWidth - 10, tabContentHeight - 135);
-                clbGroupIdItems.Font = new Font("Consolas", 9);
+                clbGroupIdItems.Font = new Font(FontHelper.MonoFontFamily, 9);
                 clbGroupIdItems.CheckOnClick = true;
                 clbGroupIdItems.SetAnchor(AnchorStyles.Top | AnchorStyles.Bottom | AnchorStyles.Left | AnchorStyles.Right);
 
@@ -28096,7 +28107,7 @@ namespace L1FlyMapViewer
             ListView lvItems = new ListView();
             lvItems.SetLocation(new Point(10, 35));
             lvItems.Size = new Size(760, 350);
-            lvItems.Font = new Font("Consolas", 9);
+            lvItems.Font = new Font(FontHelper.MonoFontFamily, 9);
             lvItems.View = View.Details;
             lvItems.FullRowSelect = true;
             lvItems.CheckBoxes = true;

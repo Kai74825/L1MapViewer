@@ -138,7 +138,7 @@ namespace L1MapViewer.Forms
             txtCustomMarkers = new TextArea
             {
                 Height = 100,
-                Font = new Font("Consolas", 9)
+                Font = new Font(FontHelper.MonoFontFamily, 9)
             };
 
             // 標記大小等級 (1-10)

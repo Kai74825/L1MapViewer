@@ -1740,18 +1740,9 @@ namespace L1FlyMapViewer
             // toolbarPanel2 (第二排 - 查看各層)
             //
             this.toolbarPanel2.BorderStyle = BorderStyle.FixedSingle;
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL1);
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL2);
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL3);
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL4);
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL5);
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL6);
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL7);
-            this.toolbarPanel2.GetControls().Add(this.btnToolCheckL8);
-            this.toolbarPanel2.GetControls().Add(this.btnEnableVisibleL8);
-            this.toolbarPanel2.GetControls().Add(this.btnViewClipboard);
-            this.toolbarPanel2.GetControls().Add(this.btnToolTestTil);
-            this.toolbarPanel2.GetControls().Add(this.btnToolClearTestTil);
+            // NOTE: Do NOT add buttons here via GetControls().Add() — on macOS native,
+            // the PixelLayout reparenting corrupts NSButton target-action, breaking Click events.
+            // Buttons are added to Eto StackLayout in MapForm.cs instead.
             this.toolbarPanel2.SetDock(DockStyle.Left);
             this.toolbarPanel2.SetLocation(new Point(40, 0));
             this.toolbarPanel2.SetName("toolbarPanel2");

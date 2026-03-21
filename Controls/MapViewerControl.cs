@@ -470,6 +470,10 @@ namespace L1MapViewer.Controls
             _mapPanel.GetControls().Add(_mapDrawable);
             this.GetControls().Add(_mapPanel);
 
+#if MACOS_NATIVE
+            _mapDrawable.ToolTip = "⌥ Option + 拖曳：平移地圖";
+#endif
+
             this.ResumeLayout(false);
         }
 
@@ -706,8 +710,10 @@ namespace L1MapViewer.Controls
 
         private void MapDrawable_MouseDown(object sender, MouseEventArgs e)
         {
-            // 中鍵拖曳
-            if (e.GetButton() == MouseButtons.Middle)
+            // 中鍵拖曳 or Alt+左鍵拖曳（觸控板三指拖曳替代方案）
+            bool isPanDrag = e.GetButton() == MouseButtons.Middle
+                || (e.GetButton() == MouseButtons.Left && e.Modifiers.HasFlag(Eto.Forms.Keys.Alt));
+            if (isPanDrag)
             {
                 _isDragging = true;
                 _dragStartPoint = e.Location.ToPoint();
@@ -762,7 +768,7 @@ namespace L1MapViewer.Controls
 
         private void MapDrawable_MouseUp(object sender, MouseEventArgs e)
         {
-            if (e.GetButton() == MouseButtons.Middle && _isDragging)
+            if (_isDragging && (e.GetButton() == MouseButtons.Middle || e.GetButton() == MouseButtons.Left))
             {
                 _isDragging = false;
                 this.Cursor = Cursors.Default;

@@ -217,7 +217,7 @@ namespace L1MapViewer.Forms
             {
                 Text = sb.ToString(),
                 ReadOnly = true,
-                Font = new Font("Consolas", 10)
+                Font = new Font(FontHelper.MonoFontFamily, 10)
             };
         }
 

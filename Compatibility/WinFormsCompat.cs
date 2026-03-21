@@ -5261,6 +5261,13 @@ public static class FontHelper
     private static readonly NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
 
     /// <summary>
+    /// 跨平台等寬字體名稱：Windows 用 Consolas，macOS 用 Menlo
+    /// </summary>
+    public static readonly string MonoFontFamily =
+        System.Runtime.InteropServices.RuntimeInformation.IsOSPlatform(
+            System.Runtime.InteropServices.OSPlatform.OSX) ? "Menlo" : "Consolas";
+
+    /// <summary>
     /// 根據平台選擇適當的 UI 字體系列名稱
     /// Windows: Segoe UI, macOS: San Francisco / Helvetica Neue, Linux: DejaVu Sans / Liberation Sans
     /// </summary>
