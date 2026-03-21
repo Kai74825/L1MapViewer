@@ -185,14 +185,16 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: ${{ env.DOTNET_VERSION }}
+        # Pin to 10.0.1xx feature band — the 10.0.2xx SDK's bundled workload
+        # produces a broken native launcher that crashes at xamarin_vm_initialize
+        dotnet-version: '10.0.1xx'
 
     - name: Install macOS workload
       run: |
-        # Pin to workload set 10.0.100-rc.2 — the release workload (26.0.11017) produces
-        # a broken native launcher that crashes at xamarin_vm_initialize.
-        # The RC2 workload (26.0.10970-net10-rc.2) generates a working launcher.
-        sudo dotnet workload install macos --version 10.0.100-rc.2 --include-previews
+        # Install macOS workload — let NuGet resolve the latest workload set version.
+        # The SDK-bundled workload (26.0.11017) produces a broken native launcher
+        # that crashes at xamarin_vm_initialize. A newer version from NuGet may fix this.
+        sudo dotnet workload install macos
         dotnet workload list
 
     - name: Import Code Signing Certificate
