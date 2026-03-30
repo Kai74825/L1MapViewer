@@ -3134,6 +3134,78 @@ namespace L1FlyMapViewer
             ExportAllMapsPassability(isL1JFormat: false);
         }
 
+        // 輸出所有地圖座標 SQL 腳本
+        private void exportCoordSqlToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            ExportAllMapsCoordSql();
+        }
+
+        // 匯出所有地圖座標為 SQL 腳本
+        private void ExportAllMapsCoordSql()
+        {
+            if (Share.MapDataList == null || Share.MapDataList.Count == 0)
+            {
+                WinFormsMessageBox.Show("請先開啟天堂客戶端！", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // 取得所有地圖 ID 並排序
+            var mapIds = Share.MapDataList.Keys
+                .Where(id => int.TryParse(id, out _))
+                .OrderBy(id => int.Parse(id))
+                .ToList();
+
+            if (mapIds.Count == 0)
+            {
+                WinFormsMessageBox.Show("找不到任何地圖資料", "提示", MessageBoxButtons.OK, MessageBoxIcon.Warning);
+                return;
+            }
+
+            // 選擇儲存檔案
+            using (var saveDialog = new SaveFileDialog())
+            {
+                saveDialog.Title = "儲存座標 SQL 腳本";
+                saveDialog.Filters.Add(new FileFilter("SQL 檔案 (*.sql)", ".sql"));
+                saveDialog.Filters.Add(new FileFilter("所有檔案 (*.*)", ".*"));
+                saveDialog.FileName = "mapids_coords.sql";
+
+                if (saveDialog.ShowDialog(this) != DialogResult.Ok)
+                    return;
+
+                string outputPath = saveDialog.FileName;
+
+                try
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine("-- 地圖座標 SQL 腳本");
+                    sb.AppendLine($"-- 產生時間: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+                    sb.AppendLine($"-- 地圖數量: {mapIds.Count}");
+                    sb.AppendLine();
+
+                    foreach (string mapId in mapIds)
+                    {
+                        var mapData = Share.MapDataList[mapId];
+                        int startX = mapData.nLinBeginX;
+                        int endX = mapData.nLinEndX;
+                        int startY = mapData.nLinBeginY;
+                        int endY = mapData.nLinEndY;
+
+                        sb.AppendLine($"UPDATE mapids SET startX={startX}, endX={endX}, startY={startY}, endY={endY} WHERE mapid = {mapId};");
+                    }
+
+                    File.WriteAllText(outputPath, sb.ToString(), Encoding.UTF8);
+
+                    this.toolStripStatusLabel1.Text = $"已輸出 {mapIds.Count} 張地圖座標 SQL 至 {outputPath}";
+                    WinFormsMessageBox.Show($"匯出完成！\n\n共 {mapIds.Count} 張地圖座標\n檔案: {outputPath}", "匯出結果", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex, "輸出座標 SQL 腳本失敗");
+                    WinFormsMessageBox.Show($"輸出失敗: {ex.Message}", "錯誤", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                }
+            }
+        }
+
         // 匯出所有地圖通行資料
         private void ExportAllMapsPassability(bool isL1JFormat)
         {

@@ -32,6 +32,7 @@ namespace L1FlyMapViewer
         private ToolStripMenuItem exportDIRToolStripMenuItem;
         private ToolStripMenuItem exportAllL1JToolStripMenuItem;
         private ToolStripMenuItem exportAllDIRToolStripMenuItem;
+        private ToolStripMenuItem exportCoordSqlToolStripMenuItem;
         private ToolStripMenuItem menuExportMapImage;
         private ToolStripMenuItem menuExit;
 
@@ -240,6 +241,7 @@ namespace L1FlyMapViewer
             this.exportDIRToolStripMenuItem = new ToolStripMenuItem();
             this.exportAllL1JToolStripMenuItem = new ToolStripMenuItem();
             this.exportAllDIRToolStripMenuItem = new ToolStripMenuItem();
+            this.exportCoordSqlToolStripMenuItem = new ToolStripMenuItem();
             this.menuExportMapImage = new ToolStripMenuItem();
             this.menuExit = new ToolStripMenuItem();
 
@@ -458,6 +460,7 @@ namespace L1FlyMapViewer
                 this.menuSaveS32,
                 this.menuExportFs32,
                 this.exportToolStripMenuItem,
+                this.exportCoordSqlToolStripMenuItem,
                 this.menuExportMapImage,
                 new ToolStripSeparator(),
                 this.menuExit
@@ -511,6 +514,10 @@ namespace L1FlyMapViewer
             this.exportAllDIRToolStripMenuItem.SetName("exportAllDIRToolStripMenuItem");
             this.exportAllDIRToolStripMenuItem.Text = "輸出所有地圖 (DIR)";
             this.exportAllDIRToolStripMenuItem.Click += new System.EventHandler(this.exportAllDIRToolStripMenuItem_Click);
+
+            this.exportCoordSqlToolStripMenuItem.SetName("exportCoordSqlToolStripMenuItem");
+            this.exportCoordSqlToolStripMenuItem.Text = "輸出座標SQL腳本...";
+            this.exportCoordSqlToolStripMenuItem.Click += new System.EventHandler(this.exportCoordSqlToolStripMenuItem_Click);
 
             this.menuExportMapImage.SetName("menuExportMapImage");
             this.menuExportMapImage.Text = "輸出地圖圖片...";
